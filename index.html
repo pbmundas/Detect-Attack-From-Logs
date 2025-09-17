@@ -44,10 +44,10 @@
 <body class="bg-gray-100 flex items-center justify-center py-6" oncontextmenu="return false;">
     <div class="container mx-auto p-6 bg-white rounded-lg shadow-xl fade-in">
         <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Threat Hunt</h1>
-        <p class="text-gray-600 mb-6 text-center">Upload an EVTX (exported as XML), CSV, LOG, or EVTX file to hunt for threats based on MITRE ATT&CK techniques.</p>
+        <p class="text-gray-600 mb-6 text-center">Upload an EVTX (exported as XML), CSV or LOG to hunt for threats based on MITRE ATT&CK techniques.</p>
         <div class="flex flex-col items-center space-y-4">
             <input type="file" id="fileInput" accept=".xml,.csv,.log,.evtx" class="border border-gray-300 rounded-lg p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-md">
-            <button onclick="processFile()" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Analyze File</button>
+            <button onclick="processFile()" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Analyze File</button> &nbps;&nbps; <button herf="https://pbmundas.github.io/Detect-Attack-From-Logs/" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Analyze File</button>
         </div>
         <div id="report" class="report-container mt-6 p-6 bg-gray-50 rounded-lg shadow-inner"></div>
     </div>
@@ -225,3 +225,4 @@
 </body>
 
 </html>
+
