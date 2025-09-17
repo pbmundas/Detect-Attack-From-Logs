@@ -8,26 +8,20 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            const parentImage = (event.ParentImage || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('cmd.exe') || 
-                     image.toLowerCase().includes('powershell.exe') || 
-                     image.toLowerCase().includes('bash') || 
-                     image.toLowerCase().includes('python') || 
-                     image.toLowerCase().includes('wscript.exe') || 
-                     image.toLowerCase().includes('cscript.exe'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103' || eid === '4104') && // Added PowerShell logging
+                    (image.includes('cmd.exe') || image.includes('powershell.exe') || image.includes('bash') || image.includes('python') || 
+                     image.includes('wscript.exe') || image.includes('cscript.exe') || image.includes('perl') || image.includes('ruby') || 
+                     commandLine.includes('interpreter') || parentImage.includes('explorer.exe'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('cmd') || 
-                 event.toLowerCase().includes('powershell') || 
-                 event.toLowerCase().includes('bash') || 
-                 event.toLowerCase().includes('python') || 
-                 event.toLowerCase().includes('vbscript') || 
-                 event.toLowerCase().includes('javascript'));
+            return typeof event === 'string' && event.toLowerCase().includes('cmd') || event.toLowerCase().includes('powershell') || 
+                   event.toLowerCase().includes('bash') || event.toLowerCase().includes('python') || event.toLowerCase().includes('vbscript') || 
+                   event.toLowerCase().includes('javascript');
         }
     },
     {
@@ -38,16 +32,17 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            const parentImage = (event.ParentImage || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('powershell.exe') || 
-                     commandLine.toLowerCase().includes('powershell'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103' || eid === '4104') && 
+                    (image.includes('powershell.exe') || commandLine.includes('powershell') || commandLine.includes('pwsh') || 
+                     commandLine.includes('invoke-expression') || parentImage.includes('cmd.exe'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('powershell');
+            return typeof event === 'string' && event.toLowerCase().includes('powershell');
         }
     },
     {
@@ -58,16 +53,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('osascript') || 
-                     commandLine.toLowerCase().includes('applescript'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('osascript') || commandLine.includes('applescript') || commandLine.includes('tell application'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.scpt|\.applescript/)) { // AppleScript files
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('osascript');
+            return typeof event === 'string' && event.toLowerCase().includes('osascript');
         }
     },
     {
@@ -78,16 +75,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('cmd.exe') || 
-                     commandLine.toLowerCase().includes('cmd'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('cmd.exe') || commandLine.includes('cmd') || commandLine.includes('start') || commandLine.includes('echo'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.bat') || event.TargetFilename?.toLowerCase().includes('.cmd')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cmd');
+            return typeof event === 'string' && event.toLowerCase().includes('cmd');
         }
     },
     {
@@ -98,17 +97,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('bash') || 
-                     image.toLowerCase().includes('sh') || 
-                     commandLine.toLowerCase().includes('bash'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('bash') || image.includes('sh') || image.includes('zsh') || commandLine.includes('bash') || commandLine.includes('sh -c'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.sh')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('bash');
+            return typeof event === 'string' && event.toLowerCase().includes('bash');
         }
     },
     {
@@ -119,20 +119,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('wscript.exe') || 
-                     image.toLowerCase().includes('cscript.exe') || 
-                     commandLine.toLowerCase().includes('vbscript'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('wscript.exe') || image.includes('cscript.exe') || commandLine.includes('vbscript') || commandLine.includes('vbs'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.vbs')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.vbs|\.vbe/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('vbscript');
+            return typeof event === 'string' && event.toLowerCase().includes('vbscript');
         }
     },
     {
@@ -143,19 +141,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('python') || 
-                     commandLine.toLowerCase().includes('python'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('python') || commandLine.includes('python') || commandLine.includes('pip') || commandLine.includes('py -c'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.py')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.py|\.pyc/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('python');
+            return typeof event === 'string' && event.toLowerCase().includes('python');
         }
     },
     {
@@ -166,20 +163,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('wscript.exe') || 
-                     image.toLowerCase().includes('cscript.exe') || 
-                     commandLine.toLowerCase().includes('javascript'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('wscript.exe') || image.includes('cscript.exe') || image.includes('node.exe') || 
+                     commandLine.includes('javascript') || commandLine.includes('js'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.js')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.js|\.jse/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('javascript');
+            return typeof event === 'string' && event.toLowerCase().includes('javascript');
         }
     },
     {
@@ -190,20 +186,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('cli') || 
-                     commandLine.toLowerCase().includes('router') || 
-                     commandLine.toLowerCase().includes('switch'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('cli') || commandLine.includes('router') || commandLine.includes('switch') || commandLine.includes('cisco') || commandLine.includes('enable'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString().match(/22|23/)) {
-                    return true; // SSH/Telnet connections
+                if (eid === '3' && event.DestinationPort?.toString().match(/22|23|443/) && event.Protocol?.toLowerCase() === 'tcp') { // SSH/Telnet/HTTPS
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cli');
+            return typeof event === 'string' && event.toLowerCase().includes('cli');
         }
     },
     // T1129 - Shared Modules
@@ -215,18 +209,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('rundll32.exe')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('rundll32.exe') || commandLine.includes('regsvr32.exe') || commandLine.includes('dllhost.exe'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.dll')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll|\.ocx/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.includes('dll')) { // Registry DLL loads
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('rundll32');
+            return typeof event === 'string' && event.toLowerCase().includes('rundll32');
         }
     },
     // T1053 - Scheduled Task/Job
@@ -238,19 +235,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('schtasks.exe') || 
-                     commandLine.toLowerCase().includes('schtasks'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('schtasks.exe') || commandLine.includes('schtasks') || commandLine.includes('taskschd') || commandLine.includes('cron'))) {
                     return true;
                 }
-                if (eid === '4698' && event.TaskName) {
-                    return true; // Scheduled task creation
+                if ((eid === '4698' || eid === '4699' || eid === '4702') && event.TaskName) { // Task creation/update/deletion
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('schtasks');
+            return typeof event === 'string' && event.toLowerCase().includes('schtasks');
         }
     },
     {
@@ -261,16 +257,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('at.exe') || 
-                     commandLine.toLowerCase().includes('at '))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('at.exe') || commandLine.includes('at ') || commandLine.includes('atd'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('at ');
+            return typeof event === 'string' && event.toLowerCase().includes('at ');
         }
     },
     {
@@ -281,21 +276,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('schtasks.exe') || 
-                     commandLine.toLowerCase().includes('schtasks'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('schtasks /create') || commandLine.includes('register-scheduledtask') || image.includes('taskschd.msc'))) {
                     return true;
                 }
-                if (eid === '4698' && event.TaskName) {
+                if (eid === '4698' && event.TaskName && event.User?.toLowerCase() !== 'system') { // Task creation with user context
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('schtasks');
+            return typeof event === 'string' && event.toLowerCase().includes('schtasks /create');
         }
     },
+    // T1053.006 - Scheduled Task/Job: Systemd Timers
     {
         id: 'T1053.006',
         name: 'Scheduled Task/Job: Systemd Timers',
@@ -304,21 +299,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('systemctl') && 
-                    commandLine.toLowerCase().includes('timer')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('systemd-run') || commandLine.includes('timer') || commandLine.includes('systemctl enable'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.timer')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.timer|\.service/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('systemctl timer');
+            return typeof event === 'string' && event.toLowerCase().includes('systemd-run');
         }
     },
+    // T1053.007 - Scheduled Task/Job: Container Orchestration Job
     {
         id: 'T1053.007',
         name: 'Scheduled Task/Job: Container Orchestration Job',
@@ -327,40 +322,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('kubectl') || 
-                     commandLine.toLowerCase().includes('cronjob'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('kubectl create cronjob') || commandLine.includes('kubernetes job') || commandLine.includes('docker schedule'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.yaml') && commandLine.includes('cronjob')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('kubectl cronjob');
-        }
-    },
-    // T1106 - Native API
-    {
-        id: 'T1106',
-        name: 'Native API',
-        description: 'Adversaries may use native APIs to execute malicious code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1106/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('createprocess') || 
-                    commandLine.toLowerCase().includes('ntdll')) {
-                    return true;
-                }
-                if (eid === '8' && event.TargetImage?.toLowerCase().includes('.exe')) {
-                    return true; // Process creation via API
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('createprocess');
+            return typeof event === 'string' && event.toLowerCase().includes('kubectl create cronjob');
         }
     },
     // T1204 - User Execution
@@ -372,64 +345,65 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('malicious') || 
-                    image.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('user execution') || image.includes('explorer.exe') || commandLine.includes('open'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious');
+            return typeof event === 'string' && event.toLowerCase().includes('user execution');
         }
     },
     {
         id: 'T1204.001',
         name: 'User Execution: Malicious Link',
-        description: 'Adversaries may use malicious links to trick users into executing code.',
+        description: 'Adversaries may use malicious links to execute code.',
         mitre_link: 'https://attack.mitre.org/techniques/T1204/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('url') && 
-                    commandLine.toLowerCase().includes('malicious')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('malicious link') || commandLine.includes('url') || commandLine.includes('http') || commandLine.includes('bit.ly'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.Referer?.includes('phish')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious url');
+            return typeof event === 'string' && event.toLowerCase().includes('malicious link');
         }
     },
     {
         id: 'T1204.002',
         name: 'User Execution: Malicious File',
-        description: 'Adversaries may use malicious files to trick users into executing code.',
+        description: 'Adversaries may use malicious files to execute code.',
         mitre_link: 'https://attack.mitre.org/techniques/T1204/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    image.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.match(/\.exe|\.docx|\.pdf/) || commandLine.includes('open') || commandLine.includes('start'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf|\.xls|\.rtf/)) {
+                    return true;
+                }
+                if (eid === '1116' && event.Message?.includes('malicious file')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious file');
+            return typeof event === 'string' && event.toLowerCase().includes('malicious file');
         }
     },
     {
@@ -440,19 +414,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('docker') || 
-                    commandLine.toLowerCase().includes('container')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('docker') || commandLine.includes('container') || commandLine.includes('docker run') || commandLine.includes('podman'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('dockerfile')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/dockerfile|\.tar/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker');
+            return typeof event === 'string' && event.toLowerCase().includes('docker');
         }
     },
     // T1569 - System Services
@@ -464,19 +437,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sc.exe') || 
-                     commandLine.toLowerCase().includes('sc create'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('sc.exe') || commandLine.includes('sc create') || commandLine.includes('new-service') || commandLine.includes('installutil'))) {
                     return true;
                 }
-                if (eid === '7045' && event.ServiceName) {
-                    return true; // Service creation
+                if ((eid === '7045' || eid === '7036') && event.ServiceName && event.User?.toLowerCase() !== 'system') { // Service creation/start
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sc create');
+            return typeof event === 'string' && event.toLowerCase().includes('sc create');
         }
     },
     {
@@ -487,19 +459,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('launchctl') || 
-                     commandLine.toLowerCase().includes('launchctl'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('launchctl') || commandLine.includes('launchctl') || commandLine.includes('launchd') || commandLine.includes('plist'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.plist')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.plist/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('launchctl');
+            return typeof event === 'string' && event.toLowerCase().includes('launchctl');
         }
     },
     {
@@ -510,19 +481,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sc.exe') || 
-                     commandLine.toLowerCase().includes('sc start'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('sc.exe') || commandLine.includes('sc start') || commandLine.includes('net start') || commandLine.includes('start-service'))) {
                     return true;
                 }
                 if (eid === '7045' && event.ServiceName) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sc start');
+            return typeof event === 'string' && event.toLowerCase().includes('sc start');
         }
     },
     // T1047 - Windows Management Instrumentation
@@ -534,16 +504,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('wmiprvse.exe') || 
-                     commandLine.toLowerCase().includes('wmic'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('wmiprvse.exe') || commandLine.includes('wmic') || commandLine.includes('wmi') || commandLine.includes('get-wmiobject'))) {
+                    return true;
+                }
+                if (eid === '5859' || eid === '5861') { // WMI event IDs
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('wmic');
+            return typeof event === 'string' && event.toLowerCase().includes('wmic');
         }
     },
     // T1609 - Container Administration Command
@@ -555,16 +527,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('docker') || 
-                     commandLine.toLowerCase().includes('kubectl'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('docker') || commandLine.includes('kubectl') || commandLine.includes('podman') || commandLine.includes('containerd'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker');
+            return typeof event === 'string' && event.toLowerCase().includes('docker');
         }
     },
     // T1610 - Deploy Container
@@ -576,19 +547,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('docker run') || 
-                     commandLine.toLowerCase().includes('kubectl apply'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('docker run') || commandLine.includes('kubectl apply') || commandLine.includes('docker-compose up') || commandLine.includes('podman run'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('dockerfile')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/dockerfile|\.yaml/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker run');
+            return typeof event === 'string' && event.toLowerCase().includes('docker run');
         }
     },
     // T1203 - Exploitation for Client Execution
@@ -600,19 +570,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('exploit') || 
-                    commandLine.toLowerCase().includes('cve')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('exploit') || commandLine.includes('cve') || commandLine.includes('metasploit') || commandLine.includes('shellcode'))) {
                     return true;
                 }
                 if (eid === '1116' && event.Message?.toLowerCase().includes('exploit')) {
-                    return true; // Microsoft Defender exploit detection
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('exploit');
+            return typeof event === 'string' && event.toLowerCase().includes('exploit');
         }
     },
     // T1559 - Inter-Process Communication
@@ -624,16 +593,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('com') || 
-                    commandLine.toLowerCase().includes('dde')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('com') || commandLine.includes('dde') || commandLine.includes('ipc') || commandLine.includes('pipe'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('com');
+            return typeof event === 'string' && event.toLowerCase().includes('com');
         }
     },
     {
@@ -644,16 +612,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('mmc.exe') || 
-                     commandLine.toLowerCase().includes('com'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('mmc.exe') || commandLine.includes('com') || commandLine.includes('ole') || commandLine.includes('cocreateinstance'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('com');
+            return typeof event === 'string' && event.toLowerCase().includes('com');
         }
     },
     {
@@ -664,18 +631,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dde')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('dde') || commandLine.includes('ddeexec') || commandLine.includes('dynamic data exchange'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.docx')) {
-                    return true; // DDE often used in Office documents
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docx|\.xlsx/)) {
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dde');
+            return typeof event === 'string' && event.toLowerCase().includes('dde');
         }
     },
     // T1620 - Software Deployment Tools
@@ -687,19 +654,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('msiexec') || 
-                     commandLine.toLowerCase().includes('sccm'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('msiexec') || commandLine.includes('sccm') || commandLine.includes('pdqdeploy') || commandLine.includes('ansible'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.msi')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.msi|\.pkg/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('msiexec');
+            return typeof event === 'string' && event.toLowerCase().includes('msiexec');
         }
     }
 ];
