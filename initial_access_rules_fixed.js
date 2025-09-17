@@ -8,21 +8,20 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            const parentImage = (event.ParentImage || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '4624' || eid === '4672') && 
-                    event.TargetUserName && !event.TargetUserName.toLowerCase().includes('system')) {
-                    return true; // Successful logon with non-system account
+                if ((eid === '4624' || eid === '4672' || eid === '4625') && // Added failed logons
+                    event.TargetUserName && !event.TargetUserName.toLowerCase().includes('system') && event.LogonType?.match(/2|3|10/)) { // Interactive, network, remote logons
+                    return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    image.toLowerCase().includes('net.exe') && 
-                    commandLine.toLowerCase().includes('user')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('net.exe') || commandLine.includes('net user') || commandLine.includes('net group') || parentImage.includes('powershell.exe'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('net user') || event.toLowerCase().includes('logon'));
+            return typeof event === 'string' && event.toLowerCase().includes('net user') || event.toLowerCase().includes('logon');
         }
     },
     {
@@ -33,21 +32,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && 
-                    event.TargetUserName?.toLowerCase().match(/admin|guest|administrator/)) {
+                if ((eid === '4624' || eid === '4625') && 
+                    event.TargetUserName?.toLowerCase().match(/admin|guest|administrator|default|root/)) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user') && 
-                    commandLine.toLowerCase().includes('admin') || commandLine.toLowerCase().includes('guest')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('net user') && (commandLine.includes('admin') || commandLine.includes('guest') || commandLine.includes('default')))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('net user admin') || event.toLowerCase().includes('net user guest'));
+            return typeof event === 'string' && event.toLowerCase().includes('net user admin') || event.toLowerCase().includes('net user guest');
         }
     },
     {
@@ -58,20 +55,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetDomainName && 
-                    !event.TargetDomainName.toLowerCase().includes('system')) {
+                if ((eid === '4624' || eid === '4625') && event.TargetDomainName && 
+                    !event.TargetDomainName.toLowerCase().includes('system') && event.LogonType === '3') { // Network logon
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user') && 
-                    commandLine.toLowerCase().includes('/domain')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('net user') && commandLine.includes('/domain') || commandLine.includes('get-aduser'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('net user /domain');
+            return typeof event === 'string' && event.toLowerCase().includes('net user /domain');
         }
     },
     {
@@ -82,20 +78,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetUserName && 
-                    !event.TargetDomainName && !event.TargetUserName.toLowerCase().includes('system')) {
+                if ((eid === '4624' || eid === '4625') && event.TargetUserName && 
+                    !event.TargetDomainName && !event.TargetUserName.toLowerCase().includes('system') && event.LogonType === '2') { // Interactive logon
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    image.toLowerCase().includes('net.exe') && 
-                    commandLine.toLowerCase().includes('user /add')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('net.exe') && commandLine.includes('user /add') || commandLine.includes('new-localuser'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('net user /add');
+            return typeof event === 'string' && event.toLowerCase().includes('net user /add');
         }
     },
     {
@@ -106,20 +101,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetUserName?.toLowerCase().match(/aws|azure/)) {
+                if ((eid === '4624' || eid === '4625') && event.TargetUserName?.toLowerCase().match(/aws|azure|gcp|cloud/)) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('aws login') || 
-                    commandLine.toLowerCase().includes('az login')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('aws login') || commandLine.includes('az login') || commandLine.includes('gcloud auth') || commandLine.includes('aws configure'))) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|azure\.com|googleapis\.com/)) { // Cloud API connections
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('aws login') || event.toLowerCase().includes('az login'));
+            return typeof event === 'string' && event.toLowerCase().includes('aws login') || event.toLowerCase().includes('az login');
         }
     },
     // T1091 - Replication Through Removable Media
@@ -131,19 +127,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('autorun') || 
-                    commandLine.toLowerCase().includes('usb')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('autorun') || commandLine.includes('usb') || commandLine.includes('removable') || commandLine.includes('diskpart'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('autorun.inf')) {
+                if ((eid === '11' || eid === '15') && event.TargetFilename?.toLowerCase().match(/autorun\.inf|desktop\.ini/)) { // Added file creation monitoring
+                    return true;
+                }
+                if (eid === '6416' && event.DeviceDescription?.toLowerCase().includes('usb') || event.DeviceDescription?.toLowerCase().includes('removable')) { // Device installation
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('autorun');
+            return typeof event === 'string' && event.toLowerCase().includes('autorun');
         }
     },
     // T1190 - Exploit Public-Facing Application
@@ -155,20 +153,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sqlmap.exe') || 
-                     commandLine.toLowerCase().includes('sqlmap') || 
-                     commandLine.toLowerCase().includes('exploit'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (image.includes('sqlmap.exe') || commandLine.includes('sqlmap') || commandLine.includes('exploit') || commandLine.includes('nikto') || commandLine.includes('dirbuster'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString().match(/80|443/)) {
-                    return true; // HTTP/HTTPS connections
+                if (eid === '3' && event.DestinationPort?.toString().match(/80|443|8080/) && event.Protocol?.toLowerCase() === 'tcp') { // Web ports with protocol
+                    return true;
+                }
+                if (eid === '1116' && event.Message?.includes('exploit')) { // AV exploit detection
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sqlmap');
+            return typeof event === 'string' && event.toLowerCase().includes('sqlmap');
         }
     },
     // T1133 - External Remote Services
@@ -180,21 +179,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.LogonType === '10') {
-                    return true; // Remote interactive logon (RDP)
+                if ((eid === '4624' || eid === '4625') && event.LogonType === '10' && event.SourceIp?.match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) { // RDP with external IP
+                    return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('mstsc.exe') || 
-                     commandLine.toLowerCase().includes('rdp') || 
-                     commandLine.toLowerCase().includes('vpn'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (image.includes('mstsc.exe') || commandLine.includes('rdp') || commandLine.includes('vpn') || commandLine.includes('openvpn') || commandLine.includes('citrix'))) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationPort?.toString().match(/3389|1194/) && event.Protocol?.toLowerCase() === 'tcp') { // RDP/VPN ports
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('rdp') || event.toLowerCase().includes('vpn'));
+            return typeof event === 'string' && event.toLowerCase().includes('rdp') || event.toLowerCase().includes('vpn');
         }
     },
     // T1195 - Supply Chain Compromise
@@ -206,19 +205,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('supply chain') || 
-                    commandLine.toLowerCase().includes('software update')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('supply chain') || commandLine.includes('software update') || commandLine.includes('apt-get') || commandLine.includes('yum install'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.exe')) {
-                    return true; // Suspicious executable creation
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.msi|\.deb|\.rpm/)) {
+                    return true;
+                }
+                if (eid === '1116' && event.Message?.includes('trojan')) { // AV trojan detection
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('supply chain');
+            return typeof event === 'string' && event.toLowerCase().includes('supply chain');
         }
     },
     {
@@ -229,19 +230,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('npm install') || 
-                     commandLine.toLowerCase().includes('pip install'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('npm install') || commandLine.includes('pip install') || commandLine.includes('maven') || commandLine.includes('gradle') || commandLine.includes('composer'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/package\.json|requirements\.txt/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/package\.json|requirements\.txt|pom\.xml|build\.gradle|composer\.json/)) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationHostname?.toString().match(/npmjs\.com|pypi\.org|mvnrepository\.com/)) { // Package repos
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('npm install');
+            return typeof event === 'string' && event.toLowerCase().includes('npm install');
         }
     },
     {
@@ -252,19 +255,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('software update') || 
-                    commandLine.toLowerCase().includes('install')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('software update') || commandLine.includes('install') || commandLine.includes('winget') || commandLine.includes('choco install') || commandLine.includes('msiexec'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.msi')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.msi|\.pkg|\.dmg/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('software update');
+            return typeof event === 'string' && event.toLowerCase().includes('software update');
         }
     },
     {
@@ -275,19 +277,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('firmware') || 
-                    commandLine.toLowerCase().includes('hardware update')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('firmware') || commandLine.includes('hardware update') || commandLine.includes('bios update') || commandLine.includes('uefi'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.bin')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bin|\.rom|\.fw/)) {
+                    return true;
+                }
+                if (eid === '6416' && event.DeviceDescription?.includes('firmware')) { // Device/firmware installation
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('firmware');
+            return typeof event === 'string' && event.toLowerCase().includes('firmware');
         }
     },
     // T1199 - Trusted Relationship
@@ -299,19 +303,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetDomainName?.toLowerCase().includes('partner')) {
+                if ((eid === '4624' || eid === '4625') && event.TargetDomainName?.toLowerCase().match(/partner|trusted|vendor/)) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('trusted domain') || 
-                    commandLine.toLowerCase().includes('partner network')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('trusted domain') || commandLine.includes('partner network') || commandLine.includes('add-adtrust') || commandLine.includes('nltest /add_trust'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('trusted domain');
+            return typeof event === 'string' && event.toLowerCase().includes('trusted domain');
         }
     },
     // T1566 - Phishing
@@ -323,19 +326,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('phish') || 
-                    commandLine.toLowerCase().includes('email')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('phish') || commandLine.includes('email') || commandLine.includes('gophish') || commandLine.includes('spearphish'))) {
                     return true;
                 }
                 if (eid === '1116' && event.Message?.toLowerCase().includes('phishing')) {
-                    return true; // Microsoft Defender phishing detection
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.eml|\.msg/)) { // Email files
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('phish');
+            return typeof event === 'string' && event.toLowerCase().includes('phish');
         }
     },
     {
@@ -346,19 +351,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('attachment') && 
-                    commandLine.toLowerCase().includes('email')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('attachment') && commandLine.includes('email') || commandLine.includes('malicious doc') || commandLine.includes('outlook /safe'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docx|\.pdf|\.exe/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docx|\.pdf|\.exe|\.zip|\.rtf/)) {
+                    return true;
+                }
+                if (eid === '1116' && event.Message?.includes('attachment')) { // AV attachment scan
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email attachment');
+            return typeof event === 'string' && event.toLowerCase().includes('email attachment');
         }
     },
     {
@@ -369,19 +376,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('url') && 
-                    commandLine.toLowerCase().includes('email')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('url') && commandLine.includes('email') || commandLine.includes('malicious link') || commandLine.includes('bit.ly'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.Referer?.includes('mail')) { // Email referers
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email url');
+            return typeof event === 'string' && event.toLowerCase().includes('email url');
         }
     },
     {
@@ -392,19 +398,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('smtp') || 
-                    commandLine.toLowerCase().includes('email service')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('smtp') || commandLine.includes('email service') || commandLine.includes('sendgrid') || commandLine.includes('mailchimp'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/gmail\.com|outlook\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/gmail\.com|outlook\.com|sendgrid\.net|mailchimp\.com/) && event.Port === '587') { // SMTP ports
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('smtp');
+            return typeof event === 'string' && event.toLowerCase().includes('smtp');
         }
     },
     // T1189 - Drive-by Compromise
@@ -416,19 +421,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('drive-by') || 
-                    commandLine.toLowerCase().includes('exploit kit')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('drive-by') || commandLine.includes('exploit kit') || commandLine.includes('ek') || commandLine.includes('malvertising') || commandLine.includes('watering hole'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.UserAgent?.match(/bot|crawler/)) { // Suspicious agents
+                    return true;
+                }
+                if (eid === '1116' && event.Message?.includes('drive-by')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('drive-by');
+            return typeof event === 'string' && event.toLowerCase().includes('drive-by');
         }
     },
     // T1200 - Hardware Additions
@@ -440,19 +447,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('hardware') || 
-                    commandLine.toLowerCase().includes('usb device')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('hardware') || commandLine.includes('usb device') || commandLine.includes('keyboard') || commandLine.includes('mouse') || commandLine.includes('hid'))) {
                     return true;
                 }
-                if (eid === '6416' && event.DeviceDescription?.toLowerCase().includes('usb')) {
-                    return true; // USB device installation
+                if ((eid === '6416' || eid === '7045') && (event.DeviceDescription?.toLowerCase().includes('usb') || event.ServiceName?.includes('hid'))) { // Device/service install
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('usb device');
+            return typeof event === 'string' && event.toLowerCase().includes('usb device');
         }
     }
 ];
