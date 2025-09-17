@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Threat Hunting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .report-container {
+            max-height: 60vh; /* Limit height to 60% of viewport height */
+            overflow-y: auto; /* Enable vertical scrolling */
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            word-break: break-word; /* Ensure long text wraps */
+            white-space: pre-wrap; /* Preserve whitespace but allow wrapping */
+        }
+        .report-container li {
+            margin-bottom: 0.5rem; /* Space between list items */
+        }
+        .hover-scale {
+            transition: transform 0.2s;
+        }
+        .hover-scale:hover {
+            transform: scale(1.02); /* Subtle hover effect */
+        }
+        body {
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px; /* Increased max-width for better readability */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center py-6">
+    <div class="container mx-auto p-6 bg-white rounded-lg shadow-xl fade-in">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Threat Hunt</h1>
+        <p class="text-gray-600 mb-6 text-center">Upload an EVTX (exported as XML), CSV, LOG, or EVTX file to hunt for threats based on MITRE ATT&CK techniques.</p>
+        <div class="flex flex-col items-center space-y-4">
+            <input type="file" id="fileInput" accept=".xml,.csv,.log,.evtx" class="border border-gray-300 rounded-lg p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-md">
+            <button onclick="processFile()" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Analyze File</button>
+        </div>
+        <div id="report" class="report-container mt-6 p-6 bg-gray-50 rounded-lg shadow-inner"></div>
+    </div>
+
+    <script>
+        // Parse XML (for EVTX exported as XML)
+        function parseXML(content) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(content, 'text/xml');
+            const events = [];
+            const eventNodes = xmlDoc.getElementsByTagName('Event');
+            for (let event of eventNodes) {
+                const eventData = {};
+                const system = event.getElementsByTagName('System')[0];
+                if (system) {
+                    const eventID = system.getElementsByTagName('EventID')[0];
+                    eventData.EventID = eventID ? eventID.textContent : '';
+                    const provider = system.getElementsByTagName('Provider')[0];
+                    if (provider) {
+                        eventData.Provider = provider.getAttribute('Name') || '';
+                    }
+                }
+                const eventDataNode = event.getElementsByTagName('EventData')[0];
+                if (eventDataNode) {
+                    for (let data of eventDataNode.children) {
+                        const name = data.getAttribute('Name');
+                        eventData[name] = data.textContent;
+                    }
+                }
+                eventData.Message = event.outerHTML;
+                events.push(eventData);
+            }
+            return events;
+        }
+
+        // Parse CSV
+        function parseCSV(content) {
+            const lines = content.split('\n').filter(line => line.trim());
+            const headers = lines[0].split(',').map(h => h.trim());
+            const events = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                const event = {};
+                headers.forEach((header, idx) => {
+                    event[header] = values[idx] || '';
+                });
+                // Standardize EventID
+                event.EventID = event.EventID || event.EventId || '';
+                // If Payload exists, parse it to extract additional fields
+                if (event.Payload) {
+                    try {
+                        const payload = JSON.parse(event.Payload);
+                        const data = payload.EventData?.Data || [];
+                        for (let item of data) {
+                            const name = item['@Name'];
+                            const text = item['#text'] || '';
+                            if (name) {
+                                event[name] = text;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing Payload:', e);
+                    }
+                }
+                events.push(event);
+            }
+            return events;
+        }
+
+        // Parse LOG (plain text)
+        function parseLog(content) {
+            return content.split('\n').filter(line => line.trim());
+        }
+
+        // Handle EVTX (instruct user to convert to XML)
+        function handleEVTX() {
+            return '<p class="text-red-600 font-semibold">EVTX files are not directly supported in the browser. Please export the EVTX file to XML using Windows Event Viewer (File > Save As > XML) and upload the XML file.</p>';
+        }
+
+        // Hunt for threats
+        function hunt(events, fileType) {
+            const threats = [];
+            for (let rule of rules) {
+                const matches = events.filter(event => rule.detection(event));
+                if (matches.length) {
+                    threats.push({
+                        technique: rule,
+                        matches: matches.slice(0, 10) // Limit to 10 for brevity
+                    });
+                }
+            }
+            return threats;
+        }
+
+        // Generate HTML report
+        function generateReport(threats) {
+            let report = '<h2 class="text-2xl font-semibold text-gray-800 mb-4">Threat Hunt Report</h2>';
+            if (!threats.length) {
+                report += '<p class="text-gray-600">No threats detected based on current rules.</p>';
+                return report;
+            }
+            for (let threat of threats) {
+                const tech = threat.technique;
+                report += `<div class="mb-6 p-4 bg-white rounded-lg shadow hover-scale">
+                    <h3 class="text-xl font-bold text-blue-600">${tech.id} - ${tech.name}</h3>
+                    <p class="text-gray-700">${tech.description}</p>
+                    <p><a href="${tech.mitre_link}" target="_blank" class="text-blue-500 hover:underline">MITRE Link</a></p>
+                    <h4 class="text-lg font-semibold text-gray-800 mt-2">Matches:</h4>
+                    <ul class="list-disc ml-6 text-gray-700">`;
+                for (let match of threat.matches) {
+                    const formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') : match;
+                    report += `<li>${formattedMatch}</li>`;
+                }
+                report += '</ul></div>';
+            }
+            return report;
+        }
+
+        // Process uploaded file
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const reportDiv = document.getElementById('report');
+            if (!file) {
+                reportDiv.innerHTML = '<p class="text-red-600 font-semibold">Please select a file.</p>';
+                return;
+            }
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'evtx') {
+                reportDiv.innerHTML = handleEVTX();
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                let events;
+                try {
+                    if (ext === 'xml') {
+                        events = parseXML(content);
+                    } else if (ext === 'csv') {
+                        events = parseCSV(content);
+                    } else if (ext === 'log') {
+                        events = parseLog(content);
+                    } else {
+                        throw new Error('Unsupported file type. Please upload XML, CSV, or LOG files.');
+                    }
+                    const threats = hunt(events, ext);
+                    const report = generateReport(threats);
+                    reportDiv.innerHTML = report;
+                    reportDiv.classList.add('fade-in');
+                } catch (error) {
+                    reportDiv.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
+                }
+            };
+            reader.readAsText(file);
+        }
+	</script>
+		
+	<script src="execution_rules_fixed.js">// Rules for threat hunting, mapped to MITRE techniques</script>
+	<script src="initial_access_rules_fixed.js"></script>
+	<script src="resource_development_rules_fixed.js"></script>
+	<script src="reconnaissance_rules_fixed.js"></script>
+	<script src="persistence_rules_fixed.js"></script>
+	<script src="privilege_escalation_rules_fixed.js"></script>
+	<script src="defense_evasion_rules_fixed.js"></script>
+    <script src="credential_access_rules.js"></script>
+    <script src="discovery_rules.js"></script>
+	<script src="lateral_movement_rules.js"></script>
+	<script src="collection_rules.js"></script>
+	<script src="command_and_control_rules.js"></script>
+	<script src="exfiltration_rules.js"></script>
+	<script src="impact_rules.js"></script>
+</body>
+</html>
