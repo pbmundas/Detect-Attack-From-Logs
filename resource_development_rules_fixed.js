@@ -8,19 +8,23 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            const parentImage = (event.ParentImage || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('whois') || 
-                    commandLine.toLowerCase().includes('domain registration')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && // Added PowerShell logging
+                    (commandLine.includes('whois') || commandLine.includes('domain registration') || commandLine.includes('godaddy') || commandLine.includes('namecheap') || 
+                     parentImage.includes('powershell.exe') || image.includes('whois.exe'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('registrar')) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/registrar|godaddy\.com|namecheap\.com|domains\.google/)) { // Added more registrar domains
+                    return true;
+                }
+                if (eid === '22' && commandLine.includes('registrar')) { // DNS queries to registrars
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('domain registration');
+            return typeof event === 'string' && event.toLowerCase().includes('domain registration');
         }
     },
     {
@@ -31,19 +35,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('whois') || 
-                    commandLine.toLowerCase().includes('register domain')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('whois') || commandLine.includes('register domain') || commandLine.includes('buy domain') || commandLine.includes('domaintools'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/godaddy\.com|namecheap\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/godaddy\.com|namecheap\.com|domains\.google|enom\.com/)) { // Added more registrars
+                    return true;
+                }
+                if (eid === '22' && commandLine.includes('domain')) { // DNS-related queries
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('register domain');
+            return typeof event === 'string' && event.toLowerCase().includes('register domain');
         }
     },
     {
@@ -54,19 +60,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dns server') || 
-                    commandLine.toLowerCase().includes('bind')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && // Added script block logging
+                    (commandLine.includes('dns server') || commandLine.includes('bind') || commandLine.includes('powerdns') || commandLine.includes('dnsmasq'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString().includes('53')) {
-                    return true; // DNS traffic
+                if (eid === '3' && event.DestinationPort?.toString().includes('53') && event.Protocol?.toLowerCase() === 'udp') { // Refined with protocol
+                    return true;
+                }
+                if (eid === '22' && commandLine.includes('dns')) { // DNS query logging
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dns server');
+            return typeof event === 'string' && event.toLowerCase().includes('dns server');
         }
     },
     {
@@ -77,19 +85,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('vps') || 
-                    commandLine.toLowerCase().includes('aws ec2')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('vps') || commandLine.includes('aws ec2') || commandLine.includes('digitalocean droplet') || commandLine.includes('linode') || commandLine.includes('vultr'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|digitalocean\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|digitalocean\.com|linode\.com|vultr\.com/)) { // Added more VPS providers
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('vps');
+            return typeof event === 'string' && event.toLowerCase().includes('vps');
         }
     },
     {
@@ -100,19 +107,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('server setup') || 
-                    commandLine.toLowerCase().includes('dedicated server')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('server setup') || commandLine.includes('dedicated server') || commandLine.includes('hetzner') || commandLine.includes('ovh'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('server')) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/hetzner\.com|ovh\.com|rackspace\.com/)) { // Added server providers
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('server setup');
+            return typeof event === 'string' && event.toLowerCase().includes('server setup');
         }
     },
     {
@@ -123,19 +129,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('botnet') || 
-                    commandLine.toLowerCase().includes('c2')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('botnet') || commandLine.includes('c2') || commandLine.includes('mirai') || commandLine.includes('necurs'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationIp?.toString().includes('.')) {
-                    return true; // Suspicious network connections
+                if (eid === '3' && event.DestinationIp?.toString().match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/) && event.User?.toLowerCase() !== 'system') { // Suspicious IPs with user context
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('botnet');
+            return typeof event === 'string' && event.toLowerCase().includes('botnet');
         }
     },
     {
@@ -146,19 +151,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('web service') || 
-                    commandLine.toLowerCase().includes('cloudflare')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('web service') || commandLine.includes('cloudflare') || commandLine.includes('heroku') || commandLine.includes('netlify') || commandLine.includes('vercel'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/cloudflare\.com|heroku\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/cloudflare\.com|heroku\.com|netlify\.com|vercel\.com/)) { // Added more web services
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('web service');
+            return typeof event === 'string' && event.toLowerCase().includes('web service');
         }
     },
     // T1584 - Compromise Infrastructure
@@ -170,19 +174,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('compromise') || 
-                    commandLine.toLowerCase().includes('hijack')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('compromise') || commandLine.includes('hijack') || commandLine.includes('exploit') || commandLine.includes('vulnerability'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.Status?.includes('unauthorized')) { // Added status check if available
+                    return true;
+                }
+                if (eid === '4625') { // Failed logons indicating compromise attempts
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('compromise');
         }
     },
     {
@@ -193,19 +199,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('domain compromise') || 
-                    commandLine.toLowerCase().includes('dns hijack')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('domain compromise') || commandLine.includes('dns hijack') || commandLine.includes('domain takeover') || commandLine.includes('subdomain hijack'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.Protocol?.toLowerCase() === 'dns') {
+                    return true;
+                }
+                if (eid === '22' && commandLine.includes('hijack')) { // DNS queries for hijacking
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dns hijack');
+            return typeof event === 'string' && event.toLowerCase().includes('dns hijack');
         }
     },
     {
@@ -216,19 +224,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dns compromise') || 
-                    commandLine.toLowerCase().includes('dns server')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('dns compromise') || commandLine.includes('dns server') || commandLine.includes('bind exploit') || commandLine.includes('dns cache poisoning'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString().includes('53')) {
+                if (eid === '3' && event.DestinationPort?.toString().includes('53') && event.Protocol?.toLowerCase() === 'udp') {
+                    return true;
+                }
+                if (eid === '22' && commandLine.includes('dns')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dns compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('dns compromise');
         }
     },
     {
@@ -239,19 +249,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('vps compromise') || 
-                    commandLine.toLowerCase().includes('aws ec2')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('vps compromise') || commandLine.includes('aws ec2') || commandLine.includes('ssh brute') || commandLine.includes('rdp exploit'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|digitalocean\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|digitalocean\.com|linode\.com/) && event.Port?.match(/22|3389/)) { // SSH/RDP ports
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('vps compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('vps compromise');
         }
     },
     {
@@ -262,19 +271,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('server compromise') || 
-                    commandLine.toLowerCase().includes('server hack')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('server compromise') || commandLine.includes('server hack') || commandLine.includes('sql injection') || commandLine.includes('rce'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('server')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('server') && event.Port?.match(/80|443|1433/)) { // Web/SQL ports
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('server compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('server compromise');
         }
     },
     {
@@ -285,19 +293,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('botnet compromise') || 
-                    commandLine.toLowerCase().includes('c2')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('botnet compromise') || commandLine.includes('c2') || commandLine.includes('ddos') || commandLine.includes('bot herder'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationIp?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationIp?.toString().match(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/) && event.Protocol?.toLowerCase() === 'tcp') {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('botnet compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('botnet compromise');
         }
     },
     {
@@ -308,19 +315,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('web service compromise') || 
-                    commandLine.toLowerCase().includes('cloudflare')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('web service compromise') || commandLine.includes('cloudflare') || commandLine.includes('api exploit') || commandLine.includes('web shell'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/cloudflare\.com|heroku\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/cloudflare\.com|heroku\.com|aws\.amazon\.com/) && event.Port?.match(/80|443/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('web service compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('web service compromise');
         }
     },
     // T1650 - Acquire Access
@@ -332,19 +338,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('acquire access') || 
-                    commandLine.toLowerCase().includes('dark web')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('acquire access') || commandLine.includes('dark web') || commandLine.includes('rda purchase') || commandLine.includes('access broker'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('tor')) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/\.onion|torproject\.org|darkmarket/)) { // Dark web indicators
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('acquire access');
+            return typeof event === 'string' && event.toLowerCase().includes('acquire access');
         }
     },
     // T1586 - Compromise Accounts
@@ -356,18 +361,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4625' && event.TargetUserName) {
-                    return true; // Failed logon attempts
+                if (eid === '4625' && event.TargetUserName && event.FailureReason?.includes('unknown user')) { // Refined failed logons
+                    return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('account compromise')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('account compromise') || commandLine.includes('brute force') || commandLine.includes('credential stuffing'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('account compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('account compromise');
         }
     },
     {
@@ -378,18 +383,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4625' && event.TargetUserName?.toLowerCase().match(/twitter|facebook|linkedin/)) {
+                if (eid === '4625' && event.TargetUserName?.toLowerCase().match(/twitter|facebook|linkedin|instagram/)) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('social media')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('social media') || commandLine.includes('account takeover') || commandLine.includes('phishing'))) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationHostname?.toString().match(/twitter\.com|facebook\.com|linkedin\.com/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('social media');
+            return typeof event === 'string' && event.toLowerCase().includes('social media');
         }
     },
     {
@@ -400,18 +408,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if (eid === '4625' && event.TargetUserName?.toLowerCase().match(/gmail\.com|outlook\.com/)) {
+                if (eid === '4625' && event.TargetUserName?.toLowerCase().match(/gmail\.com|outlook\.com|protonmail\.com/)) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('email compromise')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('email compromise') || commandLine.includes('imap exploit') || commandLine.includes('pop3 brute'))) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationPort?.toString().match(/143|993|110|995/)) { // Email ports
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email compromise');
+            return typeof event === 'string' && event.toLowerCase().includes('email compromise');
         }
     },
     // T1585 - Establish Accounts
@@ -423,19 +434,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user /add') || 
-                    commandLine.toLowerCase().includes('account creation')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('net user /add') || commandLine.includes('account creation') || commandLine.includes('add-aduser') || commandLine.includes('new-localuser'))) {
                     return true;
                 }
-                if (eid === '4720' && event.TargetUserName) {
-                    return true; // User account creation
+                if (eid === '4720' && event.TargetUserName && event.Creator?.toLowerCase() !== 'system') { // User creation with creator context
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('account creation');
+            return typeof event === 'string' && event.toLowerCase().includes('account creation');
         }
     },
     {
@@ -446,19 +456,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('social media account') || 
-                    commandLine.toLowerCase().includes('twitter')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('social media account') || commandLine.includes('twitter') || commandLine.includes('facebook api') || commandLine.includes('instagram signup'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/twitter\.com|facebook\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/twitter\.com|facebook\.com|linkedin\.com|instagram\.com/)) { // Added more social platforms
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('social media account');
+            return typeof event === 'string' && event.toLowerCase().includes('social media account');
         }
     },
     {
@@ -469,19 +478,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('email account') || 
-                    commandLine.toLowerCase().includes('gmail')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('email account') || commandLine.includes('gmail') || commandLine.includes('outlook signup') || commandLine.includes('protonmail'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/gmail\.com|outlook\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/gmail\.com|outlook\.com|protonmail\.com|yandex\.com/)) { // Added more email providers
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email account');
+            return typeof event === 'string' && event.toLowerCase().includes('email account');
         }
     },
     // T1587 - Develop Capabilities
@@ -493,19 +501,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('malware') || 
-                    commandLine.toLowerCase().includes('exploit')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('malware') || commandLine.includes('exploit') || commandLine.includes('payload') || commandLine.includes('obfuscate'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll|\.py|\.ps1/) && event.Creator?.includes('dev')) { // Dev-related creators
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malware');
+            return typeof event === 'string' && event.toLowerCase().includes('malware');
         }
     },
     {
@@ -516,18 +523,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('malware development')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('malware development') || commandLine.includes('ransomware') || commandLine.includes('trojan') || commandLine.includes('virus'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malware development');
+            return typeof event === 'string' && event.toLowerCase().includes('malware development');
         }
     },
     {
@@ -538,19 +545,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('code signing') || 
-                    commandLine.toLowerCase().includes('certificate')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('code signing') || commandLine.includes('certificate') || commandLine.includes('signtool') || commandLine.includes('makecert'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.cer')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.pfx|\.p12/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('code signing');
+            return typeof event === 'string' && event.toLowerCase().includes('code signing');
         }
     },
     {
@@ -561,19 +567,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('digital certificate') || 
-                    commandLine.toLowerCase().includes('openssl')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('digital certificate') || commandLine.includes('openssl') || commandLine.includes('keytool') || commandLine.includes('certbot'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.cer')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.crt|\.pem|\.key/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('digital certificate');
+            return typeof event === 'string' && event.toLowerCase().includes('digital certificate');
         }
     },
     {
@@ -584,19 +589,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('exploit development') || 
-                    commandLine.toLowerCase().includes('metasploit')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('exploit development') || commandLine.includes('metasploit') || commandLine.includes('canvas') || commandLine.includes('core impact'))) {
                     return true;
                 }
-                if (eid === '1116' && event.Message?.toLowerCase().includes('exploit')) {
+                if (eid === '1116' && event.Message?.toLowerCase().includes('exploit')) { // AV detections
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('exploit development');
+            return typeof event === 'string' && event.toLowerCase().includes('exploit development');
         }
     },
     // T1588 - Obtain Capabilities
@@ -608,19 +612,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('obtain malware') || 
-                    commandLine.toLowerCase().includes('tool download')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('obtain malware') || commandLine.includes('tool download') || commandLine.includes('wget') || commandLine.includes('curl'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll|\.zip|\.rar/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('obtain malware');
+            return typeof event === 'string' && event.toLowerCase().includes('obtain malware');
         }
     },
     {
@@ -631,18 +634,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('malware download')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('malware download') || commandLine.includes('dark market') || commandLine.includes('ransomware kit'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malware download');
+            return typeof event === 'string' && event.toLowerCase().includes('malware download');
         }
     },
     {
@@ -653,19 +656,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('tool download') || 
-                    commandLine.toLowerCase().includes('nmap')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('tool download') || commandLine.includes('nmap') || commandLine.includes('netcat') || commandLine.includes('mimikatz'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.py/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.py|\.bat/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('tool download');
+            return typeof event === 'string' && event.toLowerCase().includes('tool download');
         }
     },
     {
@@ -676,18 +678,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('code signing certificate')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('code signing certificate') || commandLine.includes('buy cert') || commandLine.includes('codesign'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.cer')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.pfx/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('code signing certificate');
+            return typeof event === 'string' && event.toLowerCase().includes('code signing certificate');
         }
     },
     {
@@ -698,20 +700,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('digital certificate') || 
-                     commandLine.toLowerCase().includes('certutil') || 
-                     commandLine.toLowerCase().includes('openssl'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('digital certificate') || commandLine.includes('certutil') || commandLine.includes('openssl') || commandLine.includes('letsencrypt'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.crt|\.pem/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.crt|\.pem|\.key/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('digital certificate');
+            return typeof event === 'string' && event.toLowerCase().includes('digital certificate');
         }
     },
     {
@@ -722,19 +722,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('exploit download') || 
-                     commandLine.toLowerCase().includes('metasploit'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('exploit download') || commandLine.includes('metasploit') || commandLine.includes('exploit-db') || commandLine.includes('0day'))) {
                     return true;
                 }
                 if (eid === '1116' && event.Message?.toLowerCase().includes('exploit')) {
-                    return true; // Antivirus detection of exploits
+                    return true;
+                }
+                if (eid === '3' && event.DestinationHostname?.toString().match(/exploit-db\.com|packetstormsecurity\.com/)) { // Exploit sites
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('exploit download');
+            return typeof event === 'string' && event.toLowerCase().includes('exploit download');
         }
     },
     {
@@ -745,20 +747,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('vulnerability scan') || 
-                     commandLine.toLowerCase().includes('nessus') || 
-                     commandLine.toLowerCase().includes('nmap'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('vulnerability scan') || commandLine.includes('nessus') || commandLine.includes('nmap') || commandLine.includes('openvas'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/cve\.mitre\.org|nvd\.nist\.gov/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/cve\.mitre\.org|nvd\.nist\.gov|tenable\.com/)) { // Added vuln DBs
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('vulnerability scan');
+            return typeof event === 'string' && event.toLowerCase().includes('vulnerability scan');
         }
     },
     // T1608 - Stage Capabilities
@@ -770,19 +770,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('stage malware') || 
-                     commandLine.toLowerCase().includes('upload'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('stage malware') || commandLine.includes('upload') || commandLine.includes('ftp') || commandLine.includes('scp'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll|\.py/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll|\.py|\.zip/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('stage malware');
+            return typeof event === 'string' && event.toLowerCase().includes('stage malware');
         }
     },
     {
@@ -793,20 +792,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('upload malware') || 
-                     commandLine.toLowerCase().includes('ftp') || 
-                     commandLine.toLowerCase().includes('scp'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('upload malware') || commandLine.includes('ftp') || commandLine.includes('scp') || commandLine.includes('sftp') || commandLine.includes('dropper'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll|\.bin/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('upload malware');
+            return typeof event === 'string' && event.toLowerCase().includes('upload malware');
         }
     },
     {
@@ -817,20 +814,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('upload tool') || 
-                     commandLine.toLowerCase().includes('nmap') || 
-                     commandLine.toLowerCase().includes('wget'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('upload tool') || commandLine.includes('nmap') || commandLine.includes('wget') || commandLine.includes('curl') || commandLine.includes('powershell iwr'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.py/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.py|\.ps1/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('upload tool');
+            return typeof event === 'string' && event.toLowerCase().includes('upload tool');
         }
     },
     {
@@ -841,19 +836,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('install certificate') || 
-                     commandLine.toLowerCase().includes('certutil'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('install certificate') || commandLine.includes('certutil') || commandLine.includes('import-certificate') || commandLine.includes('openssl install'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.crt|\.pem/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.cer|\.crt|\.pem|\.pfx/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('certificates')) { // Registry cert installs
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('install certificate');
+            return typeof event === 'string' && event.toLowerCase().includes('install certificate');
         }
     },
     {
@@ -864,19 +861,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('drive-by') || 
-                     commandLine.toLowerCase().includes('exploit kit'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('drive-by') || commandLine.includes('exploit kit') || commandLine.includes('ek') || commandLine.includes('malvertising'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
-                    return true; // Suspicious network connections
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.UserAgent?.includes('bot')) { // Suspicious user agents
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('drive-by');
+            return typeof event === 'string' && event.toLowerCase().includes('drive-by');
         }
     },
     {
@@ -887,19 +883,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('malicious link') || 
-                     commandLine.toLowerCase().includes('url'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('malicious link') || commandLine.includes('url') || commandLine.includes('bit.ly') || commandLine.includes('tinyurl') || commandLine.includes('goo.gl'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.') && event.Referer?.includes('phish')) { // Phishing referers
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious link');
+            return typeof event === 'string' && event.toLowerCase().includes('malicious link');
         }
     },
     {
@@ -910,19 +905,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('seo poisoning') || 
-                     commandLine.toLowerCase().includes('search engine'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('seo poisoning') || commandLine.includes('search engine') || commandLine.includes('google dork') || commandLine.includes('blackhat seo'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/google\.com|bing\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/google\.com|bing\.com|yandex\.com/) && event.Query?.includes('site:')) { // Dorking indicators
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('seo poisoning');
+            return typeof event === 'string' && event.toLowerCase().includes('seo poisoning');
         }
     }
 ];
