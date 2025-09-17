@@ -8,19 +8,23 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            const parentImage = (event.ParentImage || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('reg add') || 
-                     commandLine.toLowerCase().includes('autostart'))) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('reg add') || commandLine.includes('autostart') || commandLine.includes('startup') || 
+                     commandLine.includes('boot') || parentImage.includes('powershell.exe'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('run')) {
-                    return true; // Registry run key modifications
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/run|startup|boot/)) { // Expanded registry keys
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('startup')) { // File creation in startup
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('autostart');
+            return typeof event === 'string' && event.toLowerCase().includes('autostart');
         }
     },
     {
@@ -31,21 +35,23 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('hkcu\\software\\microsoft\\windows\\currentversion\\run')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('hkcu\\software\\microsoft\\windows\\currentversion\\run') || 
+                     commandLine.includes('hklm\\software\\microsoft\\windows\\currentversion\\run') || 
+                     commandLine.includes('runonce') || commandLine.includes('startup folder'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().match(/run|runonce/)) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/run|runonce|startup/)) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('startup')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/startup|start menu/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('run key');
+            return typeof event === 'string' && event.toLowerCase().includes('run key');
         }
     },
     {
@@ -56,18 +62,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('authentication package')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('authentication package') || commandLine.includes('lsa') || commandLine.includes('security package'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('authenticationpackages')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/authenticationpackages|lsp/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('authentication package');
+            return typeof event === 'string' && event.toLowerCase().includes('authentication package');
         }
     },
     {
@@ -78,18 +84,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('time provider')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('time provider') || commandLine.includes('w32tm') || commandLine.includes('ntp'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('timeproviders')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/timeproviders|w32time/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('time provider');
+            return typeof event === 'string' && event.toLowerCase().includes('time provider');
         }
     },
     {
@@ -100,18 +106,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('winlogon')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('winlogon') || commandLine.includes('notify') || commandLine.includes('shell'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('winlogon')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/winlogon|notify/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('winlogon');
+            return typeof event === 'string' && event.toLowerCase().includes('winlogon');
         }
     },
     {
@@ -122,18 +128,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('security support provider')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('security support provider') || commandLine.includes('ssp') || commandLine.includes('securitypackages'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('securitypackages')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/securitypackages|ssp/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('security support provider');
+            return typeof event === 'string' && event.toLowerCase().includes('security support provider');
         }
     },
     {
@@ -144,18 +150,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('kernel module')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('kernel module') || commandLine.includes('insmod') || commandLine.includes('modprobe') || commandLine.includes('driver load'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sys/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sys|\.ko/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('kernel module');
+            return typeof event === 'string' && event.toLowerCase().includes('kernel module');
         }
     },
     {
@@ -166,15 +172,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('re-opened application')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('re-opened application') || commandLine.includes('reopen') || commandLine.includes('loginitems'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('reopen')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('re-opened application');
+            return typeof event === 'string' && event.toLowerCase().includes('re-opened application');
         }
     },
     {
@@ -185,18 +194,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('lsass driver')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('lsass driver') || commandLine.includes('lsass') || commandLine.includes('load driver'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sys/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('lsass driver');
+            return typeof event === 'string' && event.toLowerCase().includes('lsass driver');
         }
     },
     {
@@ -207,86 +216,90 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('shortcut modification')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('shortcut modification') || commandLine.includes('lnk') || commandLine.includes('modify shortcut'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.lnk/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('shortcut modification');
+            return typeof event === 'string' && event.toLowerCase().includes('shortcut modification');
         }
     },
+    // T1547.010 - Boot or Logon Autostart Execution: Port Monitors
     {
         id: 'T1547.010',
         name: 'Boot or Logon Autostart Execution: Port Monitors',
-        description: 'Adversaries may use port monitors for persistence.',
+        description: 'Adversaries may configure port monitors for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1547/010/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('port monitor')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('port monitor') || commandLine.includes('add-portmonitor') || commandLine.includes('spooler'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('portmonitors')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('port monitor');
+            return typeof event === 'string' && event.toLowerCase().includes('port monitor');
         }
     },
+    // T1547.012 - Boot or Logon Autostart Execution: Print Processors
     {
         id: 'T1547.012',
         name: 'Boot or Logon Autostart Execution: Print Processors',
-        description: 'Adversaries may use print processors for persistence.',
+        description: 'Adversaries may configure print processors for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1547/012/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('print processor')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('print processor') || commandLine.includes('add-printprocessor') || commandLine.includes('spoolsv'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('printprocessors')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('print processor');
+            return typeof event === 'string' && event.toLowerCase().includes('print processor');
         }
     },
+    // T1547.013 - Boot or Logon Autostart Execution: XDG Autostart Entries
     {
         id: 'T1547.013',
         name: 'Boot or Logon Autostart Execution: XDG Autostart Entries',
-        description: 'Adversaries may use XDG autostart entries for persistence.',
+        description: 'Adversaries may use XDG autostart entries for persistence on Linux.',
         mitre_link: 'https://attack.mitre.org/techniques/T1547/013/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('xdg autostart')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('xdg') || commandLine.includes('autostart') || commandLine.includes('desktop entry'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.desktop/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('xdg autostart');
+            return typeof event === 'string' && event.toLowerCase().includes('xdg');
         }
     },
+    // T1547.014 - Boot or Logon Autostart Execution: Active Setup
     {
         id: 'T1547.014',
         name: 'Boot or Logon Autostart Execution: Active Setup',
@@ -295,427 +308,41 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('active setup')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('active setup') || commandLine.includes('stubpath'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('activesetup')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('active setup');
+            return typeof event === 'string' && event.toLowerCase().includes('active setup');
         }
     },
-    // T1037 - Boot or Logon Initialization Scripts
+    // T1547.015 - Boot or Logon Autostart Execution: Login Items
     {
-        id: 'T1037',
-        name: 'Boot or Logon Initialization Scripts',
-        description: 'Adversaries may use initialization scripts to achieve persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/',
+        id: 'T1547.015',
+        name: 'Boot or Logon Autostart Execution: Login Items',
+        description: 'Adversaries may use login items for persistence on macOS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1547/015/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('logon script')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('login item') || commandLine.includes('system preferences') || commandLine.includes('loginitems'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bat|\.vbs/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('loginitems')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('logon script');
-        }
-    },
-    {
-        id: 'T1037.001',
-        name: 'Boot or Logon Initialization Scripts: Logon Script (Windows)',
-        description: 'Adversaries may use Windows logon scripts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/001/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('logon script')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bat|\.vbs/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('windows logon script');
-        }
-    },
-    {
-        id: 'T1037.002',
-        name: 'Boot or Logon Initialization Scripts: Logon Script (Mac)',
-        description: 'Adversaries may use macOS logon scripts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('mac logon script')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sh/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('mac logon script');
-        }
-    },
-    {
-        id: 'T1037.003',
-        name: 'Boot or Logon Initialization Scripts: Network Logon Script',
-        description: 'Adversaries may use network logon scripts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/003/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('network logon script')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bat|\.vbs/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('network logon script');
-        }
-    },
-    {
-        id: 'T1037.004',
-        name: 'Boot or Logon Initialization Scripts: RC Scripts',
-        description: 'Adversaries may use RC scripts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/004/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('rc script')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.rc/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('rc script');
-        }
-    },
-    {
-        id: 'T1037.005',
-        name: 'Boot or Logon Initialization Scripts: Startup Items',
-        description: 'Adversaries may use startup items for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1037/005/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('startup item')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.plist/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('startup item');
-        }
-    },
-    // T1556 - Modify Authentication Process
-    {
-        id: 'T1556',
-        name: 'Modify Authentication Process',
-        description: 'Adversaries may modify authentication mechanisms for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('authentication process')) {
-                    return true;
-                }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('authentication')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('authentication process');
-        }
-    },
-    {
-        id: 'T1556.001',
-        name: 'Modify Authentication Process: Domain Controller Authentication',
-        description: 'Adversaries may modify domain controller authentication for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/001/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('domain controller authentication')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('domain controller authentication');
-        }
-    },
-    {
-        id: 'T1556.002',
-        name: 'Modify Authentication Process: Password Filter DLL',
-        description: 'Adversaries may use password filter DLLs for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('password filter dll')) {
-                    return true;
-                }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('passwordfilter')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('password filter dll');
-        }
-    },
-    {
-        id: 'T1556.003',
-        name: 'Modify Authentication Process: Pluggable Authentication Modules',
-        description: 'Adversaries may modify PAM for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/003/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('pam module')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.so/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('pam module');
-        }
-    },
-    {
-        id: 'T1556.004',
-        name: 'Modify Authentication Process: Network Device Authentication',
-        description: 'Adversaries may modify network device authentication for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/004/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('network device authentication')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('network device authentication');
-        }
-    },
-    {
-        id: 'T1556.005',
-        name: 'Modify Authentication Process: Reversible Encryption',
-        description: 'Adversaries may enable reversible encryption for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/005/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('reversible encryption')) {
-                    return true;
-                }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('encryptpasswords')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('reversible encryption');
-        }
-    },
-    {
-        id: 'T1556.006',
-        name: 'Modify Authentication Process: Multi-Factor Authentication',
-        description: 'Adversaries may modify MFA for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/006/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('multi-factor authentication')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('multi-factor authentication');
-        }
-    },
-    {
-        id: 'T1556.007',
-        name: 'Modify Authentication Process: Hybrid Identity',
-        description: 'Adversaries may modify hybrid identity for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/007/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('hybrid identity')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('hybrid identity');
-        }
-    },
-    {
-        id: 'T1556.008',
-        name: 'Modify Authentication Process: Cloud API Key',
-        description: 'Adversaries may modify cloud API keys for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1556/008/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud api key')) {
-                    return true;
-                }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|azure\.com/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud api key');
-        }
-    },
-    // T1136 - Create Account
-    {
-        id: 'T1136',
-        name: 'Create Account',
-        description: 'Adversaries may create accounts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1136/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user /add')) {
-                    return true;
-                }
-                if (eid === '4720' && event.TargetUserName) {
-                    return true; // User account creation
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('account creation');
-        }
-    },
-    {
-        id: 'T1136.001',
-        name: 'Create Account: Local Account',
-        description: 'Adversaries may create local accounts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1136/001/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user /add')) {
-                    return true;
-                }
-                if (eid === '4720' && event.TargetUserName && !event.TargetDomainName) {
-                    return true; // Local account creation
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('local account creation');
-        }
-    },
-    {
-        id: 'T1136.002',
-        name: 'Create Account: Domain Account',
-        description: 'Adversaries may create domain accounts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1136/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user /add /domain')) {
-                    return true;
-                }
-                if (eid === '4720' && event.TargetDomainName) {
-                    return true; // Domain account creation
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('domain account creation');
-        }
-    },
-    {
-        id: 'T1136.003',
-        name: 'Create Account: Cloud Account',
-        description: 'Adversaries may create cloud accounts for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1136/003/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud account')) {
-                    return true;
-                }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud account creation');
+            return typeof event === 'string' && event.toLowerCase().includes('login item');
         }
     },
     // T1543 - Create or Modify System Process
@@ -727,62 +354,62 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sc create')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('sc create') || commandLine.includes('new-service') || commandLine.includes('systemd'))) {
                     return true;
                 }
                 if (eid === '7045' && event.ServiceName) {
-                    return true; // Service creation
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('system process');
+            return typeof event === 'string' && event.toLowerCase().includes('sc create');
         }
     },
     {
         id: 'T1543.001',
         name: 'Create or Modify System Process: Launch Agent',
-        description: 'Adversaries may create or modify launch agents for persistence.',
+        description: 'Adversaries may create or modify launch agents for persistence on macOS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1543/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('launch agent')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('launchctl') || commandLine.includes('launch agent') || commandLine.includes('plist'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.plist/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('launch agent');
+            return typeof event === 'string' && event.toLowerCase().includes('launch agent');
         }
     },
     {
         id: 'T1543.002',
         name: 'Create or Modify System Process: Systemd Service',
-        description: 'Adversaries may create or modify systemd services for persistence.',
+        description: 'Adversaries may create or modify systemd services for persistence on Linux.',
         mitre_link: 'https://attack.mitre.org/techniques/T1543/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('systemctl')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('systemctl') || commandLine.includes('systemd service') || commandLine.includes('enable'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.service/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('systemd service');
+            return typeof event === 'string' && event.toLowerCase().includes('systemd service');
         }
     },
     {
@@ -793,225 +420,85 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sc create')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('sc create') || commandLine.includes('new-service') || commandLine.includes('installutil'))) {
                     return true;
                 }
-                if (eid === '7045' && event.ServiceName) {
+                if (eid === '7045' && event.ServiceName && event.ImagePath?.includes('.exe')) { // Service with executable path
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('windows service');
+            return typeof event === 'string' && event.toLowerCase().includes('sc create');
         }
     },
     {
         id: 'T1543.004',
         name: 'Create or Modify System Process: Launch Daemon',
-        description: 'Adversaries may create or modify launch daemons for persistence.',
+        description: 'Adversaries may create or modify launch daemons for persistence on macOS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1543/004/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('launch daemon')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('launch daemon') || commandLine.includes('launchctl') || commandLine.includes('daemon plist'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.plist/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('launch daemon');
-        }
-    },
-    // T1548 - Abuse Elevation Control Mechanism
-    {
-        id: 'T1548',
-        name: 'Abuse Elevation Control Mechanism',
-        description: 'Adversaries may abuse elevation control mechanisms for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('uac bypass')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('uac bypass');
-        }
-    },
-    {
-        id: 'T1548.001',
-        name: 'Abuse Elevation Control Mechanism: Setuid and Setgid',
-        description: 'Adversaries may use setuid/setgid for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/001/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('chmod +s')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('setuid');
-        }
-    },
-    {
-        id: 'T1548.002',
-        name: 'Abuse Elevation Control Mechanism: Bypass User Account Control',
-        description: 'Adversaries may bypass UAC for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('uac bypass')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('uac bypass');
-        }
-    },
-    {
-        id: 'T1548.003',
-        name: 'Abuse Elevation Control Mechanism: Sudo and Sudo Caching',
-        description: 'Adversaries may abuse sudo for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/003/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sudo')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/sudoers/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sudo');
-        }
-    },
-    {
-        id: 'T1548.004',
-        name: 'Abuse Elevation Control Mechanism: Elevated Execution with Prompt',
-        description: 'Adversaries may use elevated execution with prompt for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/004/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('runas')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('elevated execution');
-        }
-    },
-    {
-        id: 'T1548.005',
-        name: 'Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access',
-        description: 'Adversaries may use temporary elevated cloud access for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/005/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud access')) {
-                    return true;
-                }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud access');
-        }
-    },
-    {
-        id: 'T1548.006',
-        name: 'Abuse Elevation Control Mechanism: Sudoers File Modification',
-        description: 'Adversaries may modify sudoers file for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1548/006/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sudoers')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/sudoers/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sudoers');
+            return typeof event === 'string' && event.toLowerCase().includes('launch daemon');
         }
     },
     // T1546 - Event Triggered Execution
     {
         id: 'T1546',
         name: 'Event Triggered Execution',
-        description: 'Adversaries may establish persistence through event-triggered execution.',
+        description: 'Adversaries may establish persistence using event triggers.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('event trigger')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('event trigger') || commandLine.includes('wmi event') || commandLine.includes('notify'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('notify')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('event trigger');
+            return typeof event === 'string' && event.toLowerCase().includes('event trigger');
         }
     },
     {
         id: 'T1546.001',
         name: 'Event Triggered Execution: Change Default File Association',
-        description: 'Adversaries may change file associations for persistence.',
+        description: 'Adversaries may change default file associations for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('assoc')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('file association') || commandLine.includes('assoc') || commandLine.includes('ftype'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('fileexts')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('classes\\')) { // ProgID changes
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('file association');
+            return typeof event === 'string' && event.toLowerCase().includes('file association');
         }
     },
     {
@@ -1022,18 +509,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('screensaver')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('screensaver') || commandLine.includes('scr'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('screensaver')) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.scr/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('screensaver');
+            return typeof event === 'string' && event.toLowerCase().includes('screensaver');
         }
     },
     {
@@ -1044,15 +534,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('wmic event')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('wmi subscription') || commandLine.includes('wmic create') || commandLine.includes('eventconsumer'))) {
+                    return true;
+                }
+                if (eid === '5859' && event.FilterName) { // WMI subscription creation
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('wmi event');
+            return typeof event === 'string' && event.toLowerCase().includes('wmi subscription');
         }
     },
     {
@@ -1063,97 +556,103 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('.bashrc')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('shell config') || commandLine.includes('bashrc') || commandLine.includes('profile') || commandLine.includes('echo >>'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bashrc|\.bash_profile/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.bashrc|\.bash_profile|\.profile/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('bashrc');
+            return typeof event === 'string' && event.toLowerCase().includes('bashrc');
         }
     },
     {
         id: 'T1546.005',
         name: 'Event Triggered Execution: Trap',
-        description: 'Adversaries may use trap commands for persistence.',
+        description: 'Adversaries may use trap command for persistence on Unix.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/005/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('trap')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('trap') || commandLine.includes('signal handler'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('trap');
+            return typeof event === 'string' && event.toLowerCase().includes('trap');
         }
     },
     {
         id: 'T1546.006',
         name: 'Event Triggered Execution: LC_LOAD_DYLIB Addition',
-        description: 'Adversaries may use LC_LOAD_DYLIB for persistence.',
+        description: 'Adversaries may add LC_LOAD_DYLIB for persistence on macOS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/006/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('lc_load_dylib')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('lc_load_dylib') || commandLine.includes('install_name_tool') || commandLine.includes('dylib'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dylib/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('lc_load_dylib');
+            return typeof event === 'string' && event.toLowerCase().includes('lc_load_dylib');
         }
     },
     {
         id: 'T1546.007',
         name: 'Event Triggered Execution: Netsh Helper DLL',
-        description: 'Adversaries may use Netsh helper DLLs for persistence.',
+        description: 'Adversaries may use netsh helper DLLs for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/007/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('netsh add helper')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('netsh add helper') || commandLine.includes('netsh helper dll'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('netsh\\helpers')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('netsh helper');
+            return typeof event === 'string' && event.toLowerCase().includes('netsh helper');
         }
     },
     {
         id: 'T1546.008',
         name: 'Event Triggered Execution: Accessibility Features',
-        description: 'Adversaries may use accessibility features for persistence.',
+        description: 'Adversaries may replace accessibility features for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/008/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sethc.exe')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('sethc.exe') || commandLine.includes('utilman.exe') || commandLine.includes('magnify.exe') || commandLine.includes('sticky keys'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('stickykeys')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('debugger')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('accessibility feature');
+            return typeof event === 'string' && event.toLowerCase().includes('sticky keys');
         }
     },
     {
@@ -1164,18 +663,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('appcert dll')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('appcert dll') || commandLine.includes('appcertdlls'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('appcertdlls')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('appcert dll');
+            return typeof event === 'string' && event.toLowerCase().includes('appcert dll');
         }
     },
     {
@@ -1186,18 +685,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('appinit dll')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('appinit dll') || commandLine.includes('appinit_dlls'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('appinit_dlls')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('appinit dll');
+            return typeof event === 'string' && event.toLowerCase().includes('appinit dll');
         }
     },
     {
@@ -1208,15 +707,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sdbinst')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('sdbinst') || commandLine.includes('shim database'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sdb/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('application shimming');
+            return typeof event === 'string' && event.toLowerCase().includes('sdbinst');
         }
     },
     {
@@ -1227,18 +729,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('image file execution options')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('ifeo') || commandLine.includes('debugger') || commandLine.includes('image file execution options'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('ifeo')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('debugger')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('ifeo');
+            return typeof event === 'string' && event.toLowerCase().includes('ifeo');
         }
     },
     {
@@ -1249,40 +751,40 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('powershell profile')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('powershell profile') || commandLine.includes('profile.ps1'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/profile\.ps1/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('powershell profile');
+            return typeof event === 'string' && event.toLowerCase().includes('powershell profile');
         }
     },
     {
         id: 'T1546.014',
         name: 'Event Triggered Execution: Emond',
-        description: 'Adversaries may use emond for persistence.',
+        description: 'Adversaries may use emond for persistence on macOS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1546/014/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('emond')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('emond') || commandLine.includes('event monitor'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/emond/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/rules\/.*\.plist/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('emond');
+            return typeof event === 'string' && event.toLowerCase().includes('emond');
         }
     },
     {
@@ -1293,18 +795,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('com hijacking')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('com hijack') || commandLine.includes('clsid') || commandLine.includes('treatas'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('clsid')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/clsid|treatas/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('com hijacking');
+            return typeof event === 'string' && event.toLowerCase().includes('com hijack');
         }
     },
     {
@@ -1315,18 +817,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('installer package')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('installer package') || commandLine.includes('pkg') || commandLine.includes('installer'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.pkg/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('installer package');
+            return typeof event === 'string' && event.toLowerCase().includes('installer package');
         }
     },
     // T1574 - Hijack Execution Flow
@@ -1338,18 +840,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dll hijacking')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('hijack') || commandLine.includes('dll search order') || commandLine.includes('path interception'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll/)) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('path')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dll hijacking');
+            return typeof event === 'string' && event.toLowerCase().includes('hijack');
         }
     },
     {
@@ -1360,18 +862,21 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dll hijacking')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('dll search order') || commandLine.includes('known dlls'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('knowndlls')) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dll hijacking');
+            return typeof event === 'string' && event.toLowerCase().includes('dll search order');
         }
     },
     {
@@ -1382,62 +887,62 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dll side-loading')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('dll side-loading') || commandLine.includes('loadlibrary'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dll side-loading');
+            return typeof event === 'string' && event.toLowerCase().includes('dll side-loading');
         }
     },
     {
         id: 'T1574.004',
         name: 'Hijack Execution Flow: Dylib Hijacking',
-        description: 'Adversaries may use dylib hijacking for persistence.',
+        description: 'Adversaries may use dylib hijacking for persistence on macOS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/004/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('dylib')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('dylib hijacking') || commandLine.includes('dyld_insert_libraries'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dylib/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dylib hijacking');
+            return typeof event === 'string' && event.toLowerCase().includes('dylib hijacking');
         }
     },
     {
         id: 'T1574.005',
-        name: 'Hijack Execution Flow: Executable Installer',
-        description: 'Adversaries may use executable installers for persistence.',
+        name: 'Hijack Execution Flow: Executable Installer File Permissions Weakness',
+        description: 'Adversaries may exploit installer file permissions for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/005/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('executable installer')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('installer permissions') || commandLine.includes('chmod') || commandLine.includes('icacls'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.msi|\.exe/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('executable installer');
+            return typeof event === 'string' && event.toLowerCase().includes('installer permissions');
         }
     },
     {
@@ -1448,40 +953,40 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('ld_preload')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('ld_preload') || commandLine.includes('ld_library_path') || commandLine.includes('linker hijack'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.so/)) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('ld_preload')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dynamic linker');
+            return typeof event === 'string' && event.toLowerCase().includes('ld_preload');
         }
     },
     {
         id: 'T1574.007',
         name: 'Hijack Execution Flow: Path Interception by PATH Environment Variable',
-        description: 'Adversaries may manipulate PATH environment variable for persistence.',
+        description: 'Adversaries may use PATH interception for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/007/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('set path')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('path interception') || commandLine.includes('path=') || commandLine.includes('export path'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('environment\\path')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('path')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('path environment');
+            return typeof event === 'string' && event.toLowerCase().includes('path interception');
         }
     },
     {
@@ -1492,82 +997,84 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('search order hijacking')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('search order hijacking') || commandLine.includes('safe dll search mode'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('safedllsearchmode')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('search order hijacking');
+            return typeof event === 'string' && event.toLowerCase().includes('search order hijacking');
         }
     },
     {
         id: 'T1574.009',
         name: 'Hijack Execution Flow: Path Interception by Unquoted Path',
-        description: 'Adversaries may exploit unquoted paths for persistence.',
+        description: 'Adversaries may use unquoted paths for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/009/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.match(/[^"]\s+\S*\.exe/)) {
-                    return true; // Detect unquoted paths
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('unquoted path') || commandLine.match(/\s[a-z]:\\[a-z ]*\\ /i))) { // Unquoted paths with spaces
+                    return true;
+                }
+                if (eid === '7045' && event.ImagePath?.match(/\s[a-z]:\\[a-z ]*\\ /i)) {
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('unquoted path');
+            return typeof event === 'string' && event.toLowerCase().includes('unquoted path');
         }
     },
     {
         id: 'T1574.010',
         name: 'Hijack Execution Flow: Services File Permissions Weakness',
-        description: 'Adversaries may exploit service file permissions for persistence.',
+        description: 'Adversaries may exploit services file permissions for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/010/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cacls') || commandLine.toLowerCase().includes('icacls')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('services permissions') || commandLine.includes('icacls') || commandLine.includes('cacls') || commandLine.includes('chmod'))) {
                     return true;
                 }
-                if (eid === '7045' && event.ServiceName) {
+                if (eid === '7045' && event.ImagePath?.includes('weak permissions')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('service permission');
+            return typeof event === 'string' && event.toLowerCase().includes('services permissions');
         }
     },
     {
         id: 'T1574.011',
         name: 'Hijack Execution Flow: Services Registry Permissions Weakness',
-        description: 'Adversaries may exploit service registry permissions for persistence.',
+        description: 'Adversaries may exploit services registry permissions for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/011/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('reg add') && 
-                    commandLine.toLowerCase().includes('services')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('services registry') || commandLine.includes('reg add') || commandLine.includes('icacls /grant'))) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('services')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('system\\currentcontrolset\\services')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('service registry permission');
+            return typeof event === 'string' && event.toLowerCase().includes('services registry');
         }
     },
     {
@@ -1578,62 +1085,37 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cor_profiler')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('cor_profiler') || commandLine.includes('cor_enable_profiling'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('cor_profiler')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cor_profiler');
+            return typeof event === 'string' && event.toLowerCase().includes('cor_profiler');
         }
     },
     {
         id: 'T1574.013',
         name: 'Hijack Execution Flow: KernelCallbackTable',
-        description: 'Adversaries may use KernelCallbackTable for persistence.',
+        description: 'Adversaries may hijack KernelCallbackTable for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1574/013/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('kernelcallbacktable')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.sys/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('kernelcallbacktable') || commandLine.includes('kcb'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('kernelcallbacktable');
-        }
-    },
-    {
-        id: 'T1574.014',
-        name: 'Hijack Execution Flow: AppDomainManager',
-        description: 'Adversaries may use AppDomainManager for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1574/014/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('appdomainmanager')) {
-                    return true;
-                }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('appdomainmanager')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('appdomainmanager');
+            return typeof event === 'string' && event.toLowerCase().includes('kernelcallbacktable');
         }
     },
     // T1098 - Account Manipulation
@@ -1645,19 +1127,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('net user') || 
-                    commandLine.toLowerCase().includes('net group')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('net user') || commandLine.includes('account manipulation') || commandLine.includes('passwd'))) {
                     return true;
                 }
-                if (eid === '4720' || eid === '4738') {
-                    return true; // User account creation or modification
+                if ((eid === '4722' || eid === '4724' || eid === '4738')) { // User enable/reset/change
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('account manipulation');
+            return typeof event === 'string' && event.toLowerCase().includes('account manipulation');
         }
     },
     {
@@ -1668,18 +1149,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud credential')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('cloud credentials') || commandLine.includes('aws access key') || commandLine.includes('az ad'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/amazonaws\.com|azure\.com/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud credential');
+            return typeof event === 'string' && event.toLowerCase().includes('cloud credentials');
         }
     },
     {
@@ -1690,15 +1171,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('email delegate')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('email delegate') || commandLine.includes('add-mailboxpermission'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email delegate');
+            return typeof event === 'string' && event.toLowerCase().includes('email delegate');
         }
     },
     {
@@ -1709,40 +1190,37 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud role')) {
-                    return true;
-                }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('cloud roles') || commandLine.includes('iam role') || commandLine.includes('az role'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud role');
+            return typeof event === 'string' && event.toLowerCase().includes('cloud roles');
         }
     },
     {
         id: 'T1098.004',
         name: 'Account Manipulation: SSH Authorized Keys',
-        description: 'Adversaries may modify SSH authorized keys for persistence.',
+        description: 'Adversaries may add SSH keys for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1098/004/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('authorized_keys')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('ssh key') || commandLine.includes('authorized_keys') || commandLine.includes('ssh-add'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/authorized_keys/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('authorized_keys')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('ssh authorized keys');
+            return typeof event === 'string' && event.toLowerCase().includes('ssh key');
         }
     },
     {
@@ -1753,15 +1231,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('device registration')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('device registration') || commandLine.includes('az device') || commandLine.includes('register-device'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('device registration');
+            return typeof event === 'string' && event.toLowerCase().includes('device registration');
         }
     },
     {
@@ -1772,185 +1250,159 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('container cluster role')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('container roles') || commandLine.includes('kubectl create role') || commandLine.includes('clusterrole'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('container cluster role');
+            return typeof event === 'string' && event.toLowerCase().includes('container roles');
         }
     },
     // T1197 - BITS Jobs
     {
         id: 'T1197',
         name: 'BITS Jobs',
-        description: 'Adversaries may abuse BITS jobs for persistence.',
+        description: 'Adversaries may use BITS jobs for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1197/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('bitsadmin')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('bitsadmin') || commandLine.includes('bits job'))) {
+                    return true;
+                }
+                if (eid === '59' || eid === '60') { // BITS job notifications
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('bitsadmin');
+            return typeof event === 'string' && event.toLowerCase().includes('bitsadmin');
         }
     },
-    // T1611 - Escape to Host
+    // T1542 - Pre-OS Boot
     {
-        id: 'T1611',
-        name: 'Escape to Host',
-        description: 'Adversaries may break out of containers to gain persistence on the host.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1611/',
+        id: 'T1542',
+        name: 'Pre-OS Boot',
+        description: 'Adversaries may modify pre-OS boot components for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('docker escape') || 
-                    commandLine.toLowerCase().includes('container breakout')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('bootkit') || commandLine.includes('bios') || commandLine.includes('uefi'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('container escape');
-        }
-    },
-    // T1053 - Scheduled Task/Job
-    {
-        id: 'T1053',
-        name: 'Scheduled Task/Job',
-        description: 'Adversaries may abuse task scheduling for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('schtasks') || 
-                    commandLine.toLowerCase().includes('at ') || 
-                    commandLine.toLowerCase().includes('cron')) {
-                    return true;
-                }
-                if (eid === '4698') {
-                    return true; // Scheduled task creation
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('scheduled task');
+            return typeof event === 'string' && event.toLowerCase().includes('bootkit');
         }
     },
     {
-        id: 'T1053.002',
-        name: 'Scheduled Task/Job: At',
-        description: 'Adversaries may use the at command for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/002/',
+        id: 'T1542.001',
+        name: 'Pre-OS Boot: System Firmware',
+        description: 'Adversaries may modify system firmware for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('at ')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('system firmware') || commandLine.includes('bios flash') || commandLine.includes('uefi update'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('at command');
+            return typeof event === 'string' && event.toLowerCase().includes('system firmware');
         }
     },
     {
-        id: 'T1053.003',
-        name: 'Scheduled Task/Job: Cron',
-        description: 'Adversaries may use cron for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/003/',
+        id: 'T1542.002',
+        name: 'Pre-OS Boot: Component Firmware',
+        description: 'Adversaries may modify component firmware for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cron')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/crontab/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('component firmware') || commandLine.includes('firmware update') || commandLine.includes('flash'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cron');
+            return typeof event === 'string' && event.toLowerCase().includes('component firmware');
         }
     },
     {
-        id: 'T1053.005',
-        name: 'Scheduled Task/Job: Scheduled Task',
-        description: 'Adversaries may use schtasks for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/005/',
+        id: 'T1542.003',
+        name: 'Pre-OS Boot: Bootkit',
+        description: 'Adversaries may use bootkits for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/003/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('schtasks /create')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('bootkit') || commandLine.includes('mbr') || commandLine.includes('vbr'))) {
                     return true;
                 }
-                if (eid === '4698') {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('boot')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('schtasks');
+            return typeof event === 'string' && event.toLowerCase().includes('bootkit');
         }
     },
     {
-        id: 'T1053.006',
-        name: 'Scheduled Task/Job: Systemd Timers',
-        description: 'Adversaries may use systemd timers for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/006/',
+        id: 'T1542.004',
+        name: 'Pre-OS Boot: ROMMONkit',
+        description: 'Adversaries may use ROMMONkit for persistence on network devices.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/004/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('systemd timer')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.timer/)) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('rommonkit') || commandLine.includes('rommon') || commandLine.includes('boot rom'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('systemd timer');
+            return typeof event === 'string' && event.toLowerCase().includes('rommonkit');
         }
     },
     {
-        id: 'T1053.007',
-        name: 'Scheduled Task/Job: Container Orchestration Job',
-        description: 'Adversaries may use container orchestration jobs for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/007/',
+        id: 'T1542.005',
+        name: 'Pre-OS Boot: TFTP Boot',
+        description: 'Adversaries may use TFTP boot for persistence on network devices.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1542/005/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('kubectl create')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('tftp boot') || commandLine.includes('tftp') || commandLine.includes('netboot'))) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationPort?.toString().includes('69')) { // TFTP port
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('container orchestration');
+            return typeof event === 'string' && event.toLowerCase().includes('tftp boot');
         }
     },
     // T1505 - Server Software Component
@@ -1962,121 +1414,694 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('server component')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('web shell') || commandLine.includes('sql trigger') || commandLine.includes('server component'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll|\.so/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.jsp|\.asp|\.php/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('server component');
+            return typeof event === 'string' && event.toLowerCase().includes('web shell');
         }
     },
     {
         id: 'T1505.001',
         name: 'Server Software Component: SQL Stored Procedures',
-        description: 'Adversaries may abuse SQL stored procedures for persistence.',
+        description: 'Adversaries may use SQL stored procedures for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1505/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('sp_addextendedproc')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('sql procedure') || commandLine.includes('sp_addextendedproc') || commandLine.includes('create procedure'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sql stored procedure');
+            return typeof event === 'string' && event.toLowerCase().includes('sql procedure');
         }
     },
     {
         id: 'T1505.002',
         name: 'Server Software Component: Transport Agent',
-        description: 'Adversaries may abuse transport agents for persistence.',
+        description: 'Adversaries may use transport agents for persistence in email servers.',
         mitre_link: 'https://attack.mitre.org/techniques/T1505/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('transport agent')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('transport agent') || commandLine.includes('install-transportagent'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('transport agent');
+            return typeof event === 'string' && event.toLowerCase().includes('transport agent');
         }
     },
     {
         id: 'T1505.003',
         name: 'Server Software Component: Web Shell',
-        description: 'Adversaries may use web shells for persistence.',
+        description: 'Adversaries may use web shells for persistence on web servers.',
         mitre_link: 'https://attack.mitre.org/techniques/T1505/003/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('web shell')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('web shell') || commandLine.includes('cmd.asp') || commandLine.includes('eval request'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.php|\.asp|\.aspx|\.jsp/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.asp|\.aspx|\.php|\.jsp/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('web shell');
+            return typeof event === 'string' && event.toLowerCase().includes('web shell');
         }
     },
     {
         id: 'T1505.004',
         name: 'Server Software Component: IIS Components',
-        description: 'Adversaries may abuse IIS components for persistence.',
+        description: 'Adversaries may use IIS components for persistence.',
         mitre_link: 'https://attack.mitre.org/techniques/T1505/004/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('iis component')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('iis component');
-        }
-    },
-    {
-        id: 'T1505.005',
-        name: 'Server Software Component: Terminal Services DLL',
-        description: 'Adversaries may abuse terminal services DLLs for persistence.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1505/005/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('terminal services dll')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('iis component') || commandLine.includes('appcmd') || commandLine.includes('iis module'))) {
                     return true;
                 }
                 if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dll/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('terminal services dll');
+            return typeof event === 'string' && event.toLowerCase().includes('iis component');
         }
     },
+    {
+        id: 'T1505.005',
+        name: 'Server Software Component: Terminal Services DLL',
+        description: 'Adversaries may use Terminal Services DLL for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1505/005/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('terminal services dll') || commandLine.includes('termsrv'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('termsrv')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('terminal services dll');
+        }
+    },
+    // T1525 - Implant Internal Image
+    {
+        id: 'T1525',
+        name: 'Implant Internal Image',
+        description: 'Adversaries may implant cloud or container images for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1525/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('implant image') || commandLine.includes('docker push') || commandLine.includes('container registry'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('dockerfile')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('implant image');
+        }
+    },
+    // T1548 - Abuse Elevation Control Mechanism
+    {
+        id: 'T1548',
+        name: 'Abuse Elevation Control Mechanism',
+        description: 'Adversaries may abuse elevation control mechanisms for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('elevation control') || commandLine.includes('uac bypass') || commandLine.includes('sudo'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('uac')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('uac bypass');
+        }
+    },
+    {
+        id: 'T1548.001',
+        name: 'Abuse Elevation Control Mechanism: Setuid and Setgid',
+        description: 'Adversaries may use setuid/setgid for persistence on Unix.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('setuid') || commandLine.includes('setgid') || commandLine.includes('chmod 4'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('setuid');
+        }
+    },
+    {
+        id: 'T1548.002',
+        name: 'Abuse Elevation Control Mechanism: Bypass User Account Control',
+        description: 'Adversaries may bypass UAC for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('uac bypass') || commandLine.includes('cmstp') || commandLine.includes('fodhelper') || commandLine.includes('eventvwr'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('uac')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('uac bypass');
+        }
+    },
+    {
+        id: 'T1548.003',
+        name: 'Abuse Elevation Control Mechanism: Sudo and Sudo Caching',
+        description: 'Adversaries may abuse sudo and caching for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/003/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('sudo') || commandLine.includes('sudoers') || commandLine.includes('visudo'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('sudoers')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('sudo');
+        }
+    },
+    {
+        id: 'T1548.004',
+        name: 'Abuse Elevation Control Mechanism: Elevated Execution with Prompt',
+        description: 'Adversaries may use elevated execution with prompt for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/004/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('elevated execution') || commandLine.includes('osascript -e') || commandLine.includes('sudo'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('elevated execution');
+        }
+    },
+    {
+        id: 'T1548.005',
+        name: 'Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access',
+        description: 'Adversaries may use temporary elevated cloud access for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1548/005/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('cloud access') || commandLine.includes('aws sts') || commandLine.includes('az role assignment'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('cloud access');
+        }
+    },
+    // T1554 - Compromise Client Software Binary
+    {
+        id: 'T1554',
+        name: 'Compromise Client Software Binary',
+        description: 'Adversaries may compromise client software binaries for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1554/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('binary compromise') || commandLine.includes('patch binary') || commandLine.includes('modify exe'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('binary compromise');
+        }
+    },
+    // T1556 - Modify Authentication Process
+    {
+        id: 'T1556',
+        name: 'Modify Authentication Process',
+        description: 'Adversaries may modify authentication processes for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('auth modification') || commandLine.includes('pam') || commandLine.includes('pluggable authentication'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('authentication')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('auth modification');
+        }
+    },
+    {
+        id: 'T1556.001',
+        name: 'Modify Authentication Process: Domain Controller Authentication',
+        description: 'Adversaries may modify DC authentication for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('dc auth') || commandLine.includes('kerberos') || commandLine.includes('ntlm'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('dc auth');
+        }
+    },
+    {
+        id: 'T1556.002',
+        name: 'Modify Authentication Process: Password Filter DLL',
+        description: 'Adversaries may use password filter DLLs for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('password filter') || commandLine.includes('notificationpackages'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('notificationpackages')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('password filter');
+        }
+    },
+    {
+        id: 'T1556.003',
+        name: 'Modify Authentication Process: Pluggable Authentication Modules',
+        description: 'Adversaries may modify PAM for persistence on Linux.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/003/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('pam') || commandLine.includes('pluggable authentication') || commandLine.includes('pam.d'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('pam.d')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('pam');
+        }
+    },
+    {
+        id: 'T1556.004',
+        name: 'Modify Authentication Process: Network Device Authentication',
+        description: 'Adversaries may modify network device authentication for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/004/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('network auth') || commandLine.includes('aaa') || commandLine.includes('radius'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('network auth');
+        }
+    },
+    {
+        id: 'T1556.005',
+        name: 'Modify Authentication Process: Reversible Encryption',
+        description: 'Adversaries may enable reversible encryption for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/005/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('reversible encryption') || commandLine.includes('set-aduser') || commandLine.includes('pwdproperties'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('reversible encryption');
+        }
+    },
+    {
+        id: 'T1556.006',
+        name: 'Modify Authentication Process: Multi-Factor Authentication',
+        description: 'Adversaries may disable or modify MFA for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/006/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('mfa') || commandLine.includes('multi-factor') || commandLine.includes('disable mfa'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('mfa');
+        }
+    },
+    {
+        id: 'T1556.007',
+        name: 'Modify Authentication Process: Hybrid Identity',
+        description: 'Adversaries may modify hybrid identity configurations for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/007/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('hybrid identity') || commandLine.includes('azure ad connect') || commandLine.includes('pass-through auth'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('hybrid identity');
+        }
+    },
+    {
+        id: 'T1556.008',
+        name: 'Modify Authentication Process: Network Provider DLL',
+        description: 'Adversaries may register malicious network provider DLLs.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1556/008/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('network provider dll') || commandLine.includes('npdll'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('networkprovider\\order')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('network provider dll');
+        }
+    },
+    // T1136 - Create Account
+    {
+        id: 'T1136',
+        name: 'Create Account',
+        description: 'Adversaries may create accounts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1136/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('net user /add') || commandLine.includes('new-localuser') || commandLine.includes('adduser'))) {
+                    return true;
+                }
+                if (eid === '4720' && event.TargetUserName) { // User creation
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('net user /add');
+        }
+    },
+    {
+        id: 'T1136.001',
+        name: 'Create Account: Local Account',
+        description: 'Adversaries may create local accounts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1136/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('net user /add') || commandLine.includes('new-localuser'))) {
+                    return true;
+                }
+                if (eid === '4720' && !event.TargetDomainName) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('net user /add');
+        }
+    },
+    {
+        id: 'T1136.002',
+        name: 'Create Account: Domain Account',
+        description: 'Adversaries may create domain accounts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1136/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('net user /add /domain') || commandLine.includes('new-aduser'))) {
+                    return true;
+                }
+                if (eid === '4720' && event.TargetDomainName) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('net user /add /domain');
+        }
+    },
+    {
+        id: 'T1136.003',
+        name: 'Create Account: Cloud Account',
+        description: 'Adversaries may create cloud accounts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1136/003/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('cloud account') || commandLine.includes('aws create-user') || commandLine.includes('az ad user create'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('cloud account');
+        }
+    },
+    // T1037 - Boot or Logon Initialization Scripts
+    {
+        id: 'T1037',
+        name: 'Boot or Logon Initialization Scripts',
+        description: 'Adversaries may use initialization scripts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('logon script') || commandLine.includes('init script') || commandLine.includes('rc.local'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/rc\.local|\.sh/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('logon script');
+        }
+    },
+    {
+        id: 'T1037.001',
+        name: 'Boot or Logon Initialization Scripts: Logon Script (Windows)',
+        description: 'Adversaries may use Windows logon scripts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('logon script') || commandLine.includes('userinit') || commandLine.includes('gpresult'))) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('userinit')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('logon script');
+        }
+    },
+    {
+        id: 'T1037.002',
+        name: 'Boot or Logon Initialization Scripts: Login Hook',
+        description: 'Adversaries may use login hooks for persistence on macOS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('login hook') || commandLine.includes('defaults write com.apple.loginwindow'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('login hook');
+        }
+    },
+    {
+        id: 'T1037.003',
+        name: 'Boot or Logon Initialization Scripts: Network Device CLI',
+        description: 'Adversaries may use network device CLI scripts for persistence.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/003/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('network cli') || commandLine.includes('event manager') || commandLine.includes('tclsh'))) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('network cli');
+        }
+    },
+    {
+        id: 'T1037.004',
+        name: 'Boot or Logon Initialization Scripts: RC Scripts',
+        description: 'Adversaries may use RC scripts for persistence on Android.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/004/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('rc script') || commandLine.includes('init.rc'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('init.rc')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('rc script');
+        }
+    },
+    {
+        id: 'T1037.005',
+        name: 'Boot or Logon Initialization Scripts: Startup Items',
+        description: 'Adversaries may use startup items for persistence on macOS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1037/005/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('startup items') || commandLine.includes('loginitems') || commandLine.includes('system preferences'))) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('startupitems')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event.toLowerCase().includes('startup items');
+        }
+    },
+    // T1542.006 - Pre-OS Boot: Component Firmware (duplicate, skipped)
+    // Assuming no duplicates in original, but adjust if needed
+
     // T1078 - Valid Accounts
     {
         id: 'T1078',
@@ -2086,14 +2111,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '4624' || eid === '4625') && event.TargetUserName) {
-                    return true; // Successful or failed logon attempts
+                if ((eid === '4624' || eid === '4625' || eid === '4672') && // Added privilege checks
+                    event.TargetUserName && !event.TargetUserName.toLowerCase().includes('system') && event.LogonType?.match(/2|3|10/)) {
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('valid account');
+            return typeof event === 'string' && event.toLowerCase().includes('valid account');
         }
     },
     {
@@ -2104,15 +2130,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
                 if ((eid === '4624' || eid === '4625') && 
-                    event.TargetUserName?.toLowerCase().match(/administrator|guest/)) {
+                    event.TargetUserName?.toLowerCase().match(/admin|guest|default|root/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('default account');
+            return typeof event === 'string' && event.toLowerCase().includes('default account');
         }
     },
     {
@@ -2123,14 +2149,14 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
                 if ((eid === '4624' || eid === '4625') && event.TargetDomainName) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('domain account');
+            return typeof event === 'string' && event.toLowerCase().includes('domain account');
         }
     },
     {
@@ -2141,14 +2167,14 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
                 if ((eid === '4624' || eid === '4625') && !event.TargetDomainName) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('local account');
+            return typeof event === 'string' && event.toLowerCase().includes('local account');
         }
     },
     {
@@ -2159,18 +2185,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('cloud account')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('cloud account') || commandLine.includes('aws login') || commandLine.includes('az login'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com/)) {
+                if (eid === '3' && event.DestinationHostname?.toString().match(/aws\.amazon\.com|azure\.com|gcp\.com/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cloud account');
+            return typeof event === 'string' && event.toLowerCase().includes('cloud account');
         }
     },
     // T1133 - External Remote Services
@@ -2182,16 +2208,16 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '3' || eid === '5156') && 
-                    event.DestinationHostname?.toLowerCase().includes('rdp') || 
-                    event.DestinationPort === '3389') {
+                if ((eid === '3' || eid === '5156' || eid === '4624') && 
+                    (event.DestinationHostname?.toLowerCase().includes('rdp') || event.DestinationPort === '3389' || event.DestinationPort === '1194' || // VPN
+                     event.LogonType === '10')) { // Remote logon
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('remote desktop');
+            return typeof event === 'string' && event.toLowerCase().includes('remote desktop');
         }
     },
     // T1137 - Office Application Startup
@@ -2203,18 +2229,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('office startup')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('office startup') || commandLine.includes('word / startup') || commandLine.includes('excel addin'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docm|\.xlsm/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docm|\.xlsm|\.pptm/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('office startup');
+            return typeof event === 'string' && event.toLowerCase().includes('office startup');
         }
     },
     {
@@ -2225,18 +2251,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('office macro')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('office macro') || commandLine.includes('enablecontent') || commandLine.includes('automacro'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dotm/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.dotm|\.xltm|\.potm/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('office macro');
+            return typeof event === 'string' && event.toLowerCase().includes('office macro');
         }
     },
     {
@@ -2247,18 +2273,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('office test')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('office test') || commandLine.includes('loadpoint'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('officetest')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('office test');
+            return typeof event === 'string' && event.toLowerCase().includes('office test');
         }
     },
     {
@@ -2269,15 +2295,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('outlook form')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('outlook form') || commandLine.includes('custom form'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('outlook form');
+            return typeof event === 'string' && event.toLowerCase().includes('outlook form');
         }
     },
     {
@@ -2288,18 +2314,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('outlook home page')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('outlook home page') || commandLine.includes('webview'))) {
                     return true;
                 }
                 if (eid === '13' && event.TargetObject?.toLowerCase().includes('outlook\\homepage')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('outlook home page');
+            return typeof event === 'string' && event.toLowerCase().includes('outlook home page');
         }
     },
     {
@@ -2310,15 +2336,15 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('outlook rule')) {
+                if ((eid === '1' || eid === '4688' || eid === '4103') && 
+                    (commandLine.includes('outlook rule') || commandLine.includes('new-inboxrule'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('outlook rule');
+            return typeof event === 'string' && event.toLowerCase().includes('outlook rule');
         }
     },
     {
@@ -2329,19 +2355,18 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString().toLowerCase();
+            const commandLine = (event.CommandLine || event.Message || '').toString().toLowerCase();
             if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('office add-in')) {
+                if ((eid === '1' || eid === '4688' || eid === '4104') && 
+                    (commandLine.includes('office add-in') || commandLine.includes('add-in') || commandLine.includes('vsto') || commandLine.includes('xll'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.xll|\.wll/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.xll|\.wll|\.vsto/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('office add-in');
+            return typeof event === 'string' && event.toLowerCase().includes('office add-in');
         }
     }
-	
 ];
