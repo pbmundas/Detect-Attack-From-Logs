@@ -1,94 +1,95 @@
-// Detection rules for Resource Development tactic on Linux systems
+// Resource Development Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
 const rules = [
-    // T1583 - Acquire Infrastructure
+    // T1583: Acquire Infrastructure
     {
         id: 'T1583',
         name: 'Acquire Infrastructure',
-        description: 'Adversaries may acquire infrastructure for their operations.',
+        description: 'Adversaries may acquire infrastructure for attacks.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('cloud') && command.includes('register');
+            const description = (event.description || '').toString().toLowerCase();
+            return command.match(/aws|azure|gcp|curl|wget/) && description.match(/infrastructure.*acquisition/i);
         }
     },
     {
         id: 'T1583.001',
         name: 'Acquire Infrastructure: Domains',
-        description: 'Adversaries may acquire domains for their operations.',
+        description: 'Adversaries may acquire domains.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/001/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('whois') && command.includes('register');
+            return command.match(/whois|godaddy|namecheap/);
         }
     },
     {
         id: 'T1583.002',
         name: 'Acquire Infrastructure: DNS Server',
-        description: 'Adversaries may acquire DNS servers for their operations.',
+        description: 'Adversaries may acquire DNS servers.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/002/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('bind') || command.includes('dns server');
+            return command.match(/bind|named|dnsmasq/);
         }
     },
     {
         id: 'T1583.003',
         name: 'Acquire Infrastructure: Virtual Private Server',
-        description: 'Adversaries may acquire VPS for their operations.',
+        description: 'Adversaries may acquire VPS.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/003/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('vps');
+            return command.match(/aws.*ec2|azure.*vm|linode|digitalocean/);
         }
     },
     {
         id: 'T1583.004',
         name: 'Acquire Infrastructure: Server',
-        description: 'Adversaries may acquire servers for their operations.',
+        description: 'Adversaries may acquire servers.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/004/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('server lease');
+            return command.match(/ssh.*setup|apache2|nginx/);
         }
     },
     {
         id: 'T1583.005',
         name: 'Acquire Infrastructure: Botnet',
-        description: 'Adversaries may acquire botnets for their operations.',
+        description: 'Adversaries may acquire botnets.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/005/',
         detection: (event) => {
             if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.includes('botnet') || command.includes('ddos');
+            const description = (event.description || '').toString().toLowerCase();
+            return description.match(/botnet|command.*control/i);
         }
     },
     {
         id: 'T1583.006',
         name: 'Acquire Infrastructure: Web Services',
-        description: 'Adversaries may acquire web services for their operations.',
+        description: 'Adversaries may acquire web services.',
         mitre_link: 'https://attack.mitre.org/techniques/T1583/006/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('web service');
+            return command.match(/curl.*github|wget.*github/);
         }
     },
-    // T1584 - Compromise Infrastructure
+    // T1584: Compromise Infrastructure
     {
         id: 'T1584',
         name: 'Compromise Infrastructure',
-        description: 'Adversaries may compromise third-party infrastructure.',
+        description: 'Adversaries may compromise infrastructure.',
         mitre_link: 'https://attack.mitre.org/techniques/T1584/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
             const description = (event.description || '').toString().toLowerCase();
-            return command.includes('exploit') && description.includes('compromise');
+            return command.match(/nmap|metasploit|sqlmap/) && description.match(/compromise.*infrastructure/i);
         }
     },
     {
@@ -99,7 +100,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('whois') && command.includes('compromise');
+            return command.match(/dns.*spoof|dig.*spoof/);
         }
     },
     {
@@ -110,7 +111,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('bind') && command.includes('exploit');
+            return command.match(/bind.*exploit|dnsmasq.*exploit/);
         }
     },
     {
@@ -121,7 +122,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('vps') && command.includes('exploit');
+            return command.match(/aws.*exploit|azure.*exploit/);
         }
     },
     {
@@ -132,7 +133,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('server') && command.includes('exploit');
+            return command.match(/apache2.*exploit|nginx.*exploit/);
         }
     },
     {
@@ -142,8 +143,8 @@ const rules = [
         mitre_link: 'https://attack.mitre.org/techniques/T1584/005/',
         detection: (event) => {
             if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.includes('botnet') && command.includes('exploit');
+            const description = (event.description || '').toString().toLowerCase();
+            return description.match(/botnet.*compromise/i);
         }
     },
     {
@@ -154,19 +155,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('web service') && command.includes('exploit');
+            return command.match(/curl.*exploit|wget.*exploit/);
         }
     },
-    // T1587 - Develop Capabilities
+    // T1587: Develop Capabilities
     {
         id: 'T1587',
         name: 'Develop Capabilities',
-        description: 'Adversaries may develop capabilities for their operations.',
+        description: 'Adversaries may develop malicious capabilities.',
         mitre_link: 'https://attack.mitre.org/techniques/T1587/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('gcc') || command.includes('make') || command.includes('compile');
+            return command.match(/gcc|make|python.*malware/);
         }
     },
     {
@@ -177,7 +178,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('gcc') && command.includes('malware');
+            return command.match(/gcc.*malware|python.*malware/);
         }
     },
     {
@@ -188,7 +189,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('openssl req') && command.includes('certificate');
+            return command.match(/openssl.*req|certutil/);
         }
     },
     {
@@ -199,7 +200,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('openssl x509') && command.includes('certificate');
+            return command.match(/openssl.*x509/);
         }
     },
     {
@@ -210,19 +211,19 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('gcc') && command.includes('exploit');
+            return command.match(/metasploit|exploit-db/);
         }
     },
-    // T1588 - Obtain Capabilities
+    // T1588: Obtain Capabilities
     {
         id: 'T1588',
         name: 'Obtain Capabilities',
-        description: 'Adversaries may obtain capabilities for their operations.',
+        description: 'Adversaries may obtain malicious capabilities.',
         mitre_link: 'https://attack.mitre.org/techniques/T1588/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('exploit');
+            return command.match(/wget.*exploit|curl.*exploit/);
         }
     },
     {
@@ -233,7 +234,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('malware');
+            return command.match(/wget.*malware|curl.*malware/);
         }
     },
     {
@@ -244,7 +245,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('tool');
+            return command.match(/wget.*tool|curl.*tool|nmap|metasploit/);
         }
     },
     {
@@ -255,7 +256,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('certificate');
+            return command.match(/openssl.*req|certutil/);
         }
     },
     {
@@ -266,7 +267,7 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('certificate');
+            return command.match(/openssl.*x509/);
         }
     },
     {
@@ -277,52 +278,52 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('exploit');
+            return command.match(/wget.*exploit|curl.*exploit|exploit-db/);
         }
     },
     {
         id: 'T1588.006',
         name: 'Obtain Capabilities: Vulnerabilities',
-        description: 'Adversaries may obtain information on vulnerabilities.',
+        description: 'Adversaries may obtain vulnerability information.',
         mitre_link: 'https://attack.mitre.org/techniques/T1588/006/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('cve');
+            return command.match(/nmap.*-sV|openvas/);
         }
     },
-    // T1608 - Stage Capabilities
+    // T1608: Stage Capabilities
     {
         id: 'T1608',
         name: 'Stage Capabilities',
-        description: 'Adversaries may stage capabilities for their operations.',
+        description: 'Adversaries may stage capabilities for attacks.',
         mitre_link: 'https://attack.mitre.org/techniques/T1608/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('/tmp/');
+            return command.match(/wget.*payload|curl.*payload|git clone.*payload/);
         }
     },
     {
         id: 'T1608.001',
         name: 'Stage Capabilities: Upload Malware',
-        description: 'Adversaries may upload malware to a system.',
+        description: 'Adversaries may upload malware.',
         mitre_link: 'https://attack.mitre.org/techniques/T1608/001/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('wget') && command.includes('/tmp/') && command.includes('malware');
+            return command.match(/wget.*malware|curl.*malware/);
         }
     },
     {
         id: 'T1608.002',
         name: 'Stage Capabilities: Upload Tool',
-        description: 'Adversaries may upload tools to a system.',
+        description: 'Adversaries may upload tools.',
         mitre_link: 'https://attack.mitre.org/techniques/T1608/002/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('scp') && command.includes('/tmp/') && command.includes('tool');
+            return command.match(/wget.*tool|curl.*tool/);
         }
     },
     {
@@ -333,40 +334,29 @@ const rules = [
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('openssl') && command.includes('certificate');
+            return command.match(/openssl.*install/);
         }
     },
     {
         id: 'T1608.004',
-        name: 'Stage Capabilities: Drive-by Compromise',
-        description: 'Adversaries may stage capabilities for drive-by compromise.',
+        name: 'Stage Capabilities: Drive-by Target',
+        description: 'Adversaries may stage drive-by targets.',
         mitre_link: 'https://attack.mitre.org/techniques/T1608/004/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('http') && command.includes('exploit');
+            return command.match(/curl.*exploit|wget.*exploit/);
         }
     },
     {
         id: 'T1608.005',
         name: 'Stage Capabilities: Link Target',
-        description: 'Adversaries may stage capabilities via malicious links.',
+        description: 'Adversaries may stage link targets.',
         mitre_link: 'https://attack.mitre.org/techniques/T1608/005/',
         detection: (event) => {
             if (!event) return false;
             const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('http');
-        }
-    },
-    {
-        id: 'T1608.006',
-        name: 'Stage Capabilities: SEO Poisoning',
-        description: 'Adversaries may use SEO poisoning to stage capabilities.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1608/006/',
-        detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.includes('curl') && command.includes('seo');
+            return command.match(/curl.*link|wget.*link/);
         }
     }
 ];
