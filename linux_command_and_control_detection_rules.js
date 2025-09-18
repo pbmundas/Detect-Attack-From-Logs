@@ -7,12 +7,11 @@ const rules = [
         description: 'Adversaries may use application layer protocols for C2.',
         mitre_link: 'https://attack.mitre.org/techniques/T1071/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/curl|wget|nc|netcat|python -c/) && 
-                    description.match(/outbound.*http|possible.*c2/i)) ||
-                   command.match(/bash \/tmp\/|python -c/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/curl|wget|nc|netcat|python\s*-c|bash\s*\/tmp\//) && 
+                    description.match(/http|c2|outbound|suspicious/i));
         }
     },
     {
@@ -21,10 +20,9 @@ const rules = [
         description: 'Adversaries may use web protocols for C2.',
         mitre_link: 'https://attack.mitre.org/techniques/T1071/001/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.match(/curl.*http|wget.*http/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            return command.match(/curl\s*.*http|wget\s*.*http/);
         }
     }
 ];
-
