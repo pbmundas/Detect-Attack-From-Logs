@@ -1,5 +1,5 @@
 // Collection Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const collectionRules = [
+const rules = [
     // T1119: Automated Collection
     {
         id: 'T1119',
