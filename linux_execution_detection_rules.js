@@ -1,5 +1,5 @@
 // Execution Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const executionRules = [
+const rules = [
     // T1059: Command and Scripting Interpreter
     {
         id: 'T1059',
@@ -204,4 +204,3 @@ const executionRules = [
     }
 ];
 
-module.exports = executionRules;
