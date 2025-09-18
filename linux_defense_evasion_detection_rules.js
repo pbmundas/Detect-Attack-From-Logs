@@ -1,5 +1,5 @@
 // Defense Evasion Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const defenseEvasionRules = [
+const rules = [
     // T1070: Indicator Removal on Host
     {
         id: 'T1070',
@@ -78,5 +78,3 @@ const defenseEvasionRules = [
         }
     }
 ];
-
-module.exports = defenseEvasionRules;
