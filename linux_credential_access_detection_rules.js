@@ -1,5 +1,5 @@
 // Credential Access Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const credentialAccessRules = [
+const rules = [
     // T1003: OS Credential Dumping
     {
         id: 'T1003',
@@ -42,4 +42,3 @@ const credentialAccessRules = [
     }
 ];
 
-module.exports = credentialAccessRules;
