@@ -7,12 +7,11 @@ const rules = [
         description: 'Adversaries may discover network configurations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1018/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/nmap|ifconfig|ip addr|netstat|curl|git clone/) && 
-                    description.match(/network.*configuration|interface.*listing|routing.*table/i)) ||
-                   command.match(/bash \/tmp\//);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/nmap|ifconfig|ip\s*addr|netstat|curl|git\s*clone|python\s*-c/) && 
+                    description.match(/network|interface|routing|suspicious/i));
         }
     },
     // T1087: Account Discovery
@@ -22,12 +21,11 @@ const rules = [
         description: 'Adversaries may enumerate accounts.',
         mitre_link: 'https://attack.mitre.org/techniques/T1087/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/whoami|id|cat.*\/etc\/passwd|nmap/) && 
-                    description.match(/account.*enumeration|local.*user/i)) ||
-                   command.includes('bash /tmp/');
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/whoami|id|cat\s*.*\/etc\/passwd|nmap/) && 
+                    description.match(/account|user|enumeration|suspicious/i));
         }
     },
     // T1135: Network Share Discovery
@@ -37,12 +35,11 @@ const rules = [
         description: 'Adversaries may search for network shares.',
         mitre_link: 'https://attack.mitre.org/techniques/T1135/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/smbclient|mount.*cifs|git clone|python -c|nmap/) && 
-                    description.match(/searching.*network.*shares|smb.*cifs/i)) ||
-                   command.match(/bash \/tmp\/|python -c/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/smbclient|mount\s*.*cifs|git\s*clone|python\s*-c|nmap/) && 
+                    description.match(/network\s*share|smb|cifs|suspicious/i));
         }
     },
     // T1082: System Information Discovery
@@ -52,9 +49,9 @@ const rules = [
         description: 'Adversaries may gather system information.',
         mitre_link: 'https://attack.mitre.org/techniques/T1082/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.match(/uname|dmidecode|lscpu|cat.*\/proc\/cpuinfo/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            return command.match(/uname|dmidecode|lscpu|cat\s*.*\/proc\/cpuinfo/);
         }
     }
 ];
