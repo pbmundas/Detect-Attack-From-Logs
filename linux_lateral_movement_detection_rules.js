@@ -1,5 +1,5 @@
 // Lateral Movement Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const lateralMovementRules = [
+const rules = [
     // T1021: Remote Services
     {
         id: 'T1021',
@@ -7,12 +7,11 @@ const lateralMovementRules = [
         description: 'Adversaries may use remote services for lateral movement.',
         mitre_link: 'https://attack.mitre.org/techniques/T1021/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/ssh|rdp|rsync|nc|netcat/) && 
-                    description.match(/remote.*ssh|remote.*connection/i)) ||
-                   command.includes('bash /tmp/');
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/ssh|rdp|rsync|nc|netcat|bash\s*\/tmp\/|python\s*-c/) && 
+                    description.match(/remote|ssh|connection|suspicious/i));
         }
     },
     {
@@ -21,8 +20,8 @@ const lateralMovementRules = [
         description: 'Adversaries may use RDP for lateral movement.',
         mitre_link: 'https://attack.mitre.org/techniques/T1021/001/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
             return command.match(/rdp|xfreerdp/);
         }
     },
@@ -32,9 +31,9 @@ const lateralMovementRules = [
         description: 'Adversaries may use SSH for lateral movement.',
         mitre_link: 'https://attack.mitre.org/techniques/T1021/004/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.match(/ssh|scp|rsync/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            return command.match(/ssh|scp|rsync|sshd/);
         }
     },
     // T1570: Lateral Tool Transfer
@@ -44,14 +43,11 @@ const lateralMovementRules = [
         description: 'Adversaries may transfer tools to other systems.',
         mitre_link: 'https://attack.mitre.org/techniques/T1570/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            return (command.match(/scp|rsync|wget|curl|git clone|nmap/) && 
-                    description.match(/lateral.*tool|transferring.*tools/i)) ||
-                   command.match(/bash \/tmp\/|python -c/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            return (command.match(/scp|rsync|wget|curl|git\s*clone|nmap|bash\s*\/tmp\/|python\s*-c/) && 
+                    description.match(/lateral|tool|transfer|suspicious/i));
         }
     }
 ];
-
-module.exports = lateralMovementRules;
