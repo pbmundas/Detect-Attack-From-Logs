@@ -1,5 +1,5 @@
 // Discovery Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const discoveryRules = [
+const rules = [
     // T1018: System Network Configuration Discovery
     {
         id: 'T1018',
