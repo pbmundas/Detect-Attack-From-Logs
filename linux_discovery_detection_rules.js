@@ -58,5 +58,3 @@ const rules = [
         }
     }
 ];
-
-module.exports = discoveryRules;
