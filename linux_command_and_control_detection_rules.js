@@ -1,5 +1,5 @@
 // Command and Control Detection Rules for MITRE ATT&CK Enterprise (Linux-focused)
-const commandAndControlRules = [
+const rules = [
     // T1071: Application Layer Protocol
     {
         id: 'T1071',
@@ -28,4 +28,3 @@ const commandAndControlRules = [
     }
 ];
 
-module.exports = commandAndControlRules;
