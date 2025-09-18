@@ -8,12 +8,12 @@ const rules = [
         mitre_link: 'https://attack.mitre.org/techniques/T1003/',
         detection: (event) => {
             if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            const description = (event.description || '').toString().toLowerCase();
-            const log_type = (event.log_type || '').toString().toLowerCase();
-            return (log_type.match(/auth|syslog|audit|kernel/) && 
-                    description.match(/credential.*store|\/etc\/shadow/i)) ||
-                   command.match(/cat.*\/etc\/shadow|wget.*credential|curl.*credential/);
+            const command = (event.command || '').toString().toLowerCase().trim();
+            const description = (event.description || '').toString().toLowerCase().trim();
+            const log_type = (event.log_type || '').toString().toLowerCase().trim();
+            return log_type.match(/auth|syslog|application|cron|kernel|audit/) && 
+                   (description.match(/credential|shadow|password|suspicious/i) || 
+                    command.match(/cat\s*.*\/etc\/shadow|wget\s*.*credential|curl\s*.*credential/));
         }
     },
     // T1555: Credentials from Password Stores
@@ -23,9 +23,9 @@ const rules = [
         description: 'Adversaries may access password stores.',
         mitre_link: 'https://attack.mitre.org/techniques/T1555/',
         detection: (event) => {
-            if (!event) return false;
-            const command = (event.command || '').toString().toLowerCase();
-            return command.match(/\/etc\/passwd|\/etc\/shadow|pass.*store/);
+            if (!event || !event.command) return false;
+            const command = event.command.toString().toLowerCase().trim();
+            return command.match(/\/etc\/passwd|\/etc\/shadow|pass\s*.*store/);
         }
     },
     // T1110: Brute Force
@@ -36,9 +36,10 @@ const rules = [
         mitre_link: 'https://attack.mitre.org/techniques/T1110/',
         detection: (event) => {
             if (!event) return false;
-            const description = (event.description || '').toString().toLowerCase();
-            return description.match(/failed.*password|brute.*force/i);
+            const description = (event.description || '').toString().toLowerCase().trim();
+            const command = (event.command || '').toString().toLowerCase().trim();
+            return description.match(/failed\s*password|brute\s*force|suspicious/i) || 
+                   command.match(/failed\s*password/);
         }
     }
 ];
-
