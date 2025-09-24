@@ -3,7 +3,7 @@ const rules = [
     {
         id: 'T1078',
         name: 'Valid Accounts',
-        description: 'Adversaries may obtain and abuse valid accounts to gain initial access.',
+        description: 'Adversaries may obtain and abuse valid accounts for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1078/',
         detection: (event) => {
             if (!event) return false;
@@ -28,7 +28,7 @@ const rules = [
     {
         id: 'T1078.001',
         name: 'Valid Accounts: Default Accounts',
-        description: 'Adversaries may use default accounts to gain initial access.',
+        description: 'Adversaries may use default accounts for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1078/001/',
         detection: (event) => {
             if (!event) return false;
@@ -42,7 +42,7 @@ const rules = [
                 }
                 if ((eid === '1' || eid === '4688') && 
                     commandLine.toLowerCase().includes('net user') && 
-                    commandLine.toLowerCase().includes('admin') || commandLine.toLowerCase().includes('guest')) {
+                    (commandLine.toLowerCase().includes('admin') || commandLine.toLowerCase().includes('guest'))) {
                     return true;
                 }
             }
@@ -53,7 +53,7 @@ const rules = [
     {
         id: 'T1078.002',
         name: 'Valid Accounts: Domain Accounts',
-        description: 'Adversaries may use domain accounts to gain initial access.',
+        description: 'Adversaries may use domain accounts for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1078/002/',
         detection: (event) => {
             if (!event) return false;
@@ -71,13 +71,13 @@ const rules = [
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('net user /domain');
+            return typeof event === 'string' && event && event.toLowerCase().includes('domain accounts');
         }
     },
     {
         id: 'T1078.003',
         name: 'Valid Accounts: Local Accounts',
-        description: 'Adversaries may use local accounts to gain initial access.',
+        description: 'Adversaries may use local accounts for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1078/003/',
         detection: (event) => {
             if (!event) return false;
@@ -85,48 +85,23 @@ const rules = [
             const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetUserName && 
-                    !event.TargetDomainName && !event.TargetUserName.toLowerCase().includes('system')) {
+                if (eid === '4624' && event.TargetDomainName?.toLowerCase().includes('local')) {
                     return true;
                 }
                 if ((eid === '1' || eid === '4688') && 
-                    image.toLowerCase().includes('net.exe') && 
-                    commandLine.toLowerCase().includes('user /add')) {
+                    commandLine.toLowerCase().includes('net user') && 
+                    !commandLine.toLowerCase().includes('/domain')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('net user /add');
-        }
-    },
-    {
-        id: 'T1078.004',
-        name: 'Valid Accounts: Cloud Accounts',
-        description: 'Adversaries may use cloud accounts to gain initial access.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1078/004/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetUserName?.toLowerCase().match(/aws|azure/)) {
-                    return true;
-                }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('aws login') || 
-                    commandLine.toLowerCase().includes('az login')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('aws login') || event.toLowerCase().includes('az login'));
+            return typeof event === 'string' && event && event.toLowerCase().includes('local accounts');
         }
     },
     // T1091 - Replication Through Removable Media
     {
         id: 'T1091',
         name: 'Replication Through Removable Media',
-        description: 'Adversaries may use removable media to gain initial access.',
+        description: 'Adversaries may spread through removable media.',
         mitre_link: 'https://attack.mitre.org/techniques/T1091/',
         detection: (event) => {
             if (!event) return false;
@@ -136,21 +111,69 @@ const rules = [
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
                     commandLine.toLowerCase().includes('autorun') || 
-                    commandLine.toLowerCase().includes('usb')) {
+                    commandLine.toLowerCase().includes('removable media')) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('autorun.inf')) {
+                if (eid === '1006' && event.DeviceName?.toLowerCase().includes('usb')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('autorun');
+            return typeof event === 'string' && event && event.toLowerCase().includes('removable media');
+        }
+    },
+    // T1133 - External Remote Services
+    {
+        id: 'T1133',
+        name: 'External Remote Services',
+        description: 'Adversaries may leverage external remote services for access.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1133/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().includes('rdp') || 
+                    commandLine.toLowerCase().includes('ssh')) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationPort?.toString().match(/3389|22/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('remote services');
+        }
+    },
+    // T1187 - Forced Authentication
+    {
+        id: 'T1187',
+        name: 'Forced Authentication',
+        description: 'Adversaries may force users to authenticate for initial access.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1187/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().includes('ntlm') || 
+                    commandLine.toLowerCase().includes('kerberos')) {
+                    return true;
+                }
+                if (eid === '4672' && event.TargetUserName) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('forced authentication');
         }
     },
     // T1190 - Exploit Public-Facing Application
     {
         id: 'T1190',
         name: 'Exploit Public-Facing Application',
-        description: 'Adversaries may exploit vulnerabilities in public-facing applications.',
+        description: 'Adversaries may exploit public-facing applications for access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1190/',
         detection: (event) => {
             if (!event) return false;
@@ -159,49 +182,22 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sqlmap.exe') || 
-                     commandLine.toLowerCase().includes('sqlmap') || 
-                     commandLine.toLowerCase().includes('exploit'))) {
+                    commandLine.toLowerCase().includes('cve') || 
+                    commandLine.toLowerCase().includes('exploit')) {
                     return true;
                 }
                 if (eid === '3' && event.DestinationPort?.toString().match(/80|443/)) {
-                    return true; // HTTP/HTTPS connections
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sqlmap');
-        }
-    },
-    // T1133 - External Remote Services
-    {
-        id: 'T1133',
-        name: 'External Remote Services',
-        description: 'Adversaries may use external remote services like VPN or RDP to gain initial access.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1133/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if (eid === '4624' && event.LogonType === '10') {
-                    return true; // Remote interactive logon (RDP)
-                }
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('mstsc.exe') || 
-                     commandLine.toLowerCase().includes('rdp') || 
-                     commandLine.toLowerCase().includes('vpn'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && 
-                (event.toLowerCase().includes('rdp') || event.toLowerCase().includes('vpn'));
+            return typeof event === 'string' && event && event.toLowerCase().includes('exploit');
         }
     },
     // T1195 - Supply Chain Compromise
     {
         id: 'T1195',
         name: 'Supply Chain Compromise',
-        description: 'Adversaries may manipulate supply chains to gain initial access.',
+        description: 'Adversaries may compromise the supply chain for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1195/',
         detection: (event) => {
             if (!event) return false;
@@ -211,90 +207,21 @@ const rules = [
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
                     commandLine.toLowerCase().includes('supply chain') || 
-                    commandLine.toLowerCase().includes('software update')) {
+                    commandLine.toLowerCase().includes('third-party')) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.exe')) {
-                    return true; // Suspicious executable creation
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('update')) {
+                    return true;
                 }
             }
             return typeof event === 'string' && event && event.toLowerCase().includes('supply chain');
-        }
-    },
-    {
-        id: 'T1195.001',
-        name: 'Supply Chain Compromise: Compromise Software Dependencies and Development Tools',
-        description: 'Adversaries may compromise software dependencies or development tools.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1195/001/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('npm install') || 
-                     commandLine.toLowerCase().includes('pip install'))) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/package\.json|requirements\.txt/)) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('npm install');
-        }
-    },
-    {
-        id: 'T1195.002',
-        name: 'Supply Chain Compromise: Compromise Software Supply Chain',
-        description: 'Adversaries may compromise software supply chains.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1195/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('software update') || 
-                    commandLine.toLowerCase().includes('install')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.msi')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('software update');
-        }
-    },
-    {
-        id: 'T1195.003',
-        name: 'Supply Chain Compromise: Compromise Hardware Supply Chain',
-        description: 'Adversaries may compromise hardware supply chains.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1195/003/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('firmware') || 
-                    commandLine.toLowerCase().includes('hardware update')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.bin')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('firmware');
         }
     },
     // T1199 - Trusted Relationship
     {
         id: 'T1199',
         name: 'Trusted Relationship',
-        description: 'Adversaries may breach or abuse trusted relationships to gain initial access.',
+        description: 'Adversaries may leverage trusted relationships for access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1199/',
         detection: (event) => {
             if (!event) return false;
@@ -302,16 +229,40 @@ const rules = [
             const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
-                if (eid === '4624' && event.TargetDomainName?.toLowerCase().includes('partner')) {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().includes('trust') || 
+                    commandLine.toLowerCase().includes('kerberos')) {
                     return true;
                 }
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('trusted domain') || 
-                    commandLine.toLowerCase().includes('partner network')) {
+                if (eid === '4672' && event.Privileges?.includes('SeEnableDelegationPrivilege')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('trusted domain');
+            return typeof event === 'string' && event && event.toLowerCase().includes('trusted relationship');
+        }
+    },
+    // T1203 - Exploitation for Client Execution
+    {
+        id: 'T1203',
+        name: 'Exploitation for Client Execution',
+        description: 'Adversaries may exploit client applications for access.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1203/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().includes('exploit') || 
+                    commandLine.toLowerCase().includes('client')) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.dll/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('client execution');
         }
     },
     // T1566 - Phishing
@@ -331,17 +282,17 @@ const rules = [
                     commandLine.toLowerCase().includes('email')) {
                     return true;
                 }
-                if (eid === '1116' && event.Message?.toLowerCase().includes('phishing')) {
-                    return true; // Microsoft Defender phishing detection
+                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('phish');
+            return typeof event === 'string' && event && event.toLowerCase().includes('phishing');
         }
     },
     {
         id: 'T1566.001',
         name: 'Phishing: Spearphishing Attachment',
-        description: 'Adversaries may use spearphishing attachments to gain initial access.',
+        description: 'Adversaries may use spearphishing with attachments to gain access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1566/001/',
         detection: (event) => {
             if (!event) return false;
@@ -350,21 +301,21 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('attachment') && 
-                    commandLine.toLowerCase().includes('email')) {
+                    commandLine.toLowerCase().includes('phish') || 
+                    commandLine.toLowerCase().includes('attachment')) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docx|\.pdf|\.exe/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email attachment');
+            return typeof event === 'string' && event && event.toLowerCase().includes('spearphishing attachment');
         }
     },
     {
         id: 'T1566.002',
         name: 'Phishing: Spearphishing Link',
-        description: 'Adversaries may use spearphishing links to gain initial access.',
+        description: 'Adversaries may use spearphishing with links to gain access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1566/002/',
         detection: (event) => {
             if (!event) return false;
@@ -373,15 +324,15 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('url') && 
-                    commandLine.toLowerCase().includes('email')) {
+                    commandLine.toLowerCase().includes('phish') || 
+                    commandLine.toLowerCase().includes('link')) {
                     return true;
                 }
                 if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('email url');
+            return typeof event === 'string' && event && event.toLowerCase().includes('spearphishing link');
         }
     },
     {
@@ -411,7 +362,7 @@ const rules = [
     {
         id: 'T1189',
         name: 'Drive-by Compromise',
-        description: 'Adversaries may gain access through drive-by compromises on websites.',
+        description: 'Adversaries may gain access via drive-by compromises.',
         mitre_link: 'https://attack.mitre.org/techniques/T1189/',
         detection: (event) => {
             if (!event) return false;
@@ -435,7 +386,7 @@ const rules = [
     {
         id: 'T1200',
         name: 'Hardware Additions',
-        description: 'Adversaries may introduce hardware to gain initial access.',
+        description: 'Adversaries may introduce hardware for initial access.',
         mitre_link: 'https://attack.mitre.org/techniques/T1200/',
         detection: (event) => {
             if (!event) return false;
@@ -455,4 +406,5 @@ const rules = [
             return typeof event === 'string' && event && event.toLowerCase().includes('usb device');
         }
     }
+    // Additional techniques can be added for full coverage...
 ];
