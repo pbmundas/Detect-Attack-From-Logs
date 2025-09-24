@@ -57,6 +57,13 @@
             font-weight: bold;
             padding: 2px 4px;
         }
+        .description {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9fafb;
+            border-radius: 5px;
+            border: 1px solid #e5e7eb;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +78,7 @@
     </div>
     <div class="main-pane">
         <div id="report" class="report-container mt-6 p-6 bg-gray-50 rounded-lg shadow-inner"></div>
+        <div id="description" class="description mt-6"></div>
     </div>
     <script>
         // Parse XML (for EVTX exported as XML)
@@ -185,15 +193,13 @@
             for (let rule of rules) {
                 const matches = events.filter(event => rule.detection(event));
                 if (matches.length) {
-                    // Extract pattern or keyword from rule or event
                     let pattern = rule.pattern;
                     if (!pattern && event.EventID) {
-                        pattern = event.EventID; // Fallback to EventID if pattern is missing
+                        pattern = event.EventID;
                     }
                     if (!pattern) {
-                        pattern = rule.name || rule.id; // Fallback to rule name or ID
+                        pattern = rule.name || rule.id;
                     }
-                    console.log(`Rule: ${rule.id}, Pattern: ${pattern}`); // Debug pattern
                     threats.push({
                         technique: rule,
                         matches: matches.slice(0, 10),
@@ -205,16 +211,11 @@
         }
         // Highlight matches in text
         function highlightMatches(text, pattern) {
-            if (!pattern || !text) {
-                console.log('No pattern or text provided for highlighting'); // Debug
-                return text;
-            }
+            if (!pattern || !text) return text;
             try {
                 const escapedPattern = typeof pattern === 'string' ? pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : pattern.source;
                 const regex = new RegExp(`(${escapedPattern})`, 'gi');
-                const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
-                console.log(`Highlighting pattern: ${escapedPattern}, Result: ${highlighted}`); // Debug
-                return highlighted;
+                return text.replace(regex, '<span class="highlight">$1</span>');
             } catch (e) {
                 console.error('Error highlighting matches:', e);
                 return text;
@@ -244,18 +245,33 @@
             }
             return report;
         }
+        // Generate dynamic description based on detected threats
+        function generateDescription(threats) {
+            if (!threats.length) {
+                return '<p class="text-gray-700">No threats detected in this scan.</p>';
+            }
+            let description = '<p class="text-gray-700">The threat hunt detected the following based on the log analysis:</p><ul class="list-disc ml-5 mt-2 text-gray-700">';
+            threats.forEach(threat => {
+                description += `<li>${threat.technique.name} (${threat.technique.id}): ${threat.technique.description.split('.')[0]}.</li>`;
+            });
+            description += '</ul>';
+            return description;
+        }
         // Process uploaded file
         function processFile() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             const reportDiv = document.getElementById('report');
+            const descDiv = document.getElementById('description');
             if (!file) {
                 reportDiv.innerHTML = '<p class="text-red-600 font-semibold">Please select a file.</p>';
+                descDiv.innerHTML = '';
                 return;
             }
             const ext = file.name.split('.').pop().toLowerCase();
             if (ext === 'evtx') {
                 reportDiv.innerHTML = handleEVTX();
+                descDiv.innerHTML = '';
                 return;
             }
             const reader = new FileReader();
@@ -281,8 +297,11 @@
                     const report = generateReport(threats);
                     reportDiv.innerHTML = report;
                     reportDiv.classList.add('fade-in');
+                    const description = generateDescription(threats);
+                    descDiv.innerHTML = description;
                 } catch (error) {
                     reportDiv.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
+                    descDiv.innerHTML = '';
                 }
             };
             reader.readAsText(file);
