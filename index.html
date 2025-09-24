@@ -40,8 +40,9 @@
             max-width: 900px;
         }
         .highlight {
-            background-color: #fefcbf; /* Light yellow for highlighting */
+            background-color: #fefcbf !important; /* Light yellow, with !important to prevent override */
             font-weight: bold;
+            padding: 2px 4px; /* Add padding for better visibility */
         }
     </style>
 </head>
@@ -169,10 +170,19 @@
             for (let rule of rules) {
                 const matches = events.filter(event => rule.detection(event));
                 if (matches.length) {
+                    // Extract pattern or keyword from rule or event
+                    let pattern = rule.pattern;
+                    if (!pattern && event.EventID) {
+                        pattern = event.EventID; // Fallback to EventID if pattern is missing
+                    }
+                    if (!pattern) {
+                        pattern = rule.name || rule.id; // Fallback to rule name or ID
+                    }
+                    console.log(`Rule: ${rule.id}, Pattern: ${pattern}`); // Debug pattern
                     threats.push({
                         technique: rule,
                         matches: matches.slice(0, 10),
-                        pattern: rule.pattern || rule.detection.toString() // Assume rule has pattern or use detection function as fallback
+                        pattern: pattern
                     });
                 }
             }
@@ -180,12 +190,16 @@
         }
         // Highlight matches in text
         function highlightMatches(text, pattern) {
-            if (!pattern) return text;
+            if (!pattern || !text) {
+                console.log('No pattern or text provided for highlighting'); // Debug
+                return text;
+            }
             try {
-                // Escape special regex characters if pattern is a string
                 const escapedPattern = typeof pattern === 'string' ? pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : pattern.source;
                 const regex = new RegExp(`(${escapedPattern})`, 'gi');
-                return text.replace(regex, '<span class="highlight">$1</span>');
+                const highlighted = text.replace(regex, '<span class="highlight">$1</span>');
+                console.log(`Highlighting pattern: ${escapedPattern}, Result: ${highlighted}`); // Debug
+                return highlighted;
             } catch (e) {
                 console.error('Error highlighting matches:', e);
                 return text;
