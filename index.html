@@ -110,35 +110,59 @@
             }
             return events;
         }
-        // Parse CSV
+        // Parse CSV with proper handling of quoted fields
         function parseCSV(content) {
             const lines = content.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return []; // Need at least header and one data row
             const headers = lines[0].split(',').map(h => h.trim());
             const events = [];
+            let currentEvent = {};
+            let inQuotedField = false;
+            let currentLine = '';
+
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
-                const event = {};
-                headers.forEach((header, idx) => {
-                    event[header] = values[idx] || '';
-                });
-                event.EventID = event.EventID || event.EventId || '';
-                if (event.Payload) {
-                    try {
-                        const payload = JSON.parse(event.Payload);
-                        const data = payload.EventData?.Data || [];
-                        for (let item of data) {
-                            const name = item['@Name'];
-                            const text = item['#text'] || '';
-                            if (name) {
-                                event[name] = text;
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error parsing Payload:', e);
-                    }
+                let line = lines[i].trim();
+                if (!line) continue;
+
+                // Handle quoted fields that span multiple lines
+                let quoteCount = (line.match(/"/g) || []).length;
+                if (quoteCount % 2 !== 0) {
+                    inQuotedField = !inQuotedField;
                 }
-                events.push(event);
+                if (inQuotedField) {
+                    currentLine += '\n' + line;
+                    continue;
+                } else if (currentLine) {
+                    line = currentLine + '\n' + line;
+                    currentLine = '';
+                }
+
+                const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                if (values.length === headers.length) {
+                    currentEvent = {};
+                    headers.forEach((header, idx) => {
+                        currentEvent[header] = values[idx] || '';
+                    });
+                    currentEvent.EventID = currentEvent.EventID || currentEvent.EventId || '';
+                    if (currentEvent.Message) {
+                        // Extract key fields from Message if possible
+                        const msgLines = currentEvent.Message.split('\n');
+                        msgLines.forEach(line => {
+                            if (line.includes('Process Command Line:')) {
+                                currentEvent.CommandLine = line.split('Process Command Line:')[1].trim().replace(/^"/, '').replace(/"$/, '');
+                            } else if (line.includes('New Process Name:')) {
+                                currentEvent.Image = line.split('New Process Name:')[1].trim().replace(/^"/, '').replace(/"$/, '');
+                            } else if (line.includes('EventID:')) {
+                                currentEvent.EventID = line.split('EventID:')[1].trim().replace(/^"/, '').replace(/"$/, '');
+                            }
+                        });
+                    }
+                    events.push(currentEvent);
+                } else {
+                    console.warn(`Skipping line ${i}: Mismatched column count. Expected ${headers.length}, got ${values.length}`, line);
+                }
             }
+            console.log('Parsed CSV events:', events);
             return events;
         }
         // Parse LOG (plain text)
@@ -344,6 +368,7 @@
                 } catch (error) {
                     reportDiv.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
                     descDiv.innerHTML = '';
+                    console.error('Processing error:', error);
                 }
             };
             reader.readAsText(file);
@@ -379,8 +404,3 @@
     <script src="linux_impact_detection_rules.js"></script>
 </body>
 </html>
-
-
-
-
-
