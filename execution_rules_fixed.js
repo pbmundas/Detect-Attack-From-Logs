@@ -93,7 +93,7 @@ const rules = [
     {
         id: 'T1059.004',
         name: 'Command and Scripting Interpreter: Unix Shell',
-        description: 'Adversaries may abuse Unix shell to execute commands.',
+        description: 'Adversaries may abuse Unix shells to execute commands.',
         mitre_link: 'https://attack.mitre.org/techniques/T1059/004/',
         detection: (event) => {
             if (!event) return false;
@@ -104,7 +104,7 @@ const rules = [
                 if ((eid === '1' || eid === '4688') && 
                     (image.toLowerCase().includes('bash') || 
                      image.toLowerCase().includes('sh') || 
-                     commandLine.toLowerCase().includes('bash'))) {
+                     image.toLowerCase().includes('zsh'))) {
                     return true;
                 }
             }
@@ -114,7 +114,7 @@ const rules = [
     {
         id: 'T1059.005',
         name: 'Command and Scripting Interpreter: Visual Basic',
-        description: 'Adversaries may abuse Visual Basic scripts to execute malicious code.',
+        description: 'Adversaries may abuse Visual Basic to execute commands or scripts.',
         mitre_link: 'https://attack.mitre.org/techniques/T1059/005/',
         detection: (event) => {
             if (!event) return false;
@@ -125,20 +125,17 @@ const rules = [
                 if ((eid === '1' || eid === '4688') && 
                     (image.toLowerCase().includes('wscript.exe') || 
                      image.toLowerCase().includes('cscript.exe') || 
-                     commandLine.toLowerCase().includes('vbscript'))) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.vbs')) {
+                     commandLine.toLowerCase().includes('vba'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('vbscript');
+            return typeof event === 'string' && event && event.toLowerCase().includes('vba');
         }
     },
     {
         id: 'T1059.006',
         name: 'Command and Scripting Interpreter: Python',
-        description: 'Adversaries may abuse Python to execute malicious code.',
+        description: 'Adversaries may abuse Python to execute commands or scripts.',
         mitre_link: 'https://attack.mitre.org/techniques/T1059/006/',
         detection: (event) => {
             if (!event) return false;
@@ -147,11 +144,7 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('python') || 
-                     commandLine.toLowerCase().includes('python'))) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.py')) {
+                    image.toLowerCase().includes('python')) {
                     return true;
                 }
             }
@@ -161,7 +154,7 @@ const rules = [
     {
         id: 'T1059.007',
         name: 'Command and Scripting Interpreter: JavaScript',
-        description: 'Adversaries may abuse JavaScript to execute malicious code.',
+        description: 'Adversaries may abuse JavaScript to execute commands or scripts.',
         mitre_link: 'https://attack.mitre.org/techniques/T1059/007/',
         detection: (event) => {
             if (!event) return false;
@@ -175,18 +168,16 @@ const rules = [
                      commandLine.toLowerCase().includes('javascript'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.js')) {
-                    return true;
-                }
             }
             return typeof event === 'string' && event && event.toLowerCase().includes('javascript');
         }
     },
+    // T1072 - Software Deployment Tools
     {
-        id: 'T1059.008',
-        name: 'Command and Scripting Interpreter: Network Device CLI',
-        description: 'Adversaries may abuse network device CLI to execute commands.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1059/008/',
+        id: 'T1072',
+        name: 'Software Deployment Tools',
+        description: 'Adversaries may gain execution and maintain persistence using software deployment tools.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1072/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -194,156 +185,23 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('cli') || 
-                     commandLine.toLowerCase().includes('router') || 
-                     commandLine.toLowerCase().includes('switch'))) {
+                    (commandLine.toLowerCase().includes('msiexec') || 
+                     commandLine.toLowerCase().includes('sccm') || 
+                     commandLine.toLowerCase().includes('psexec'))) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString().match(/22|23/)) {
-                    return true; // SSH/Telnet connections
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('cli');
-        }
-    },
-    // T1129 - Shared Modules
-    {
-        id: 'T1129',
-        name: 'Shared Modules',
-        description: 'Adversaries may execute malicious code via shared modules like DLLs.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1129/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('rundll32.exe')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.dll')) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.msi')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('rundll32');
-        }
-    },
-    // T1053 - Scheduled Task/Job
-    {
-        id: 'T1053',
-        name: 'Scheduled Task/Job',
-        description: 'Adversaries may abuse scheduled tasks or jobs to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('schtasks.exe') || 
-                     commandLine.toLowerCase().includes('schtasks'))) {
-                    return true;
-                }
-                if (eid === '4698' && event.TaskName) {
-                    return true; // Scheduled task creation
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('schtasks');
-        }
-    },
-    {
-        id: 'T1053.002',
-        name: 'Scheduled Task/Job: At',
-        description: 'Adversaries may use the at command to schedule tasks.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('at.exe') || 
-                     commandLine.toLowerCase().includes('at '))) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('at ');
-        }
-    },
-    {
-        id: 'T1053.005',
-        name: 'Scheduled Task/Job: Scheduled Task',
-        description: 'Adversaries may use scheduled tasks to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/005/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('schtasks.exe') || 
-                     commandLine.toLowerCase().includes('schtasks'))) {
-                    return true;
-                }
-                if (eid === '4698' && event.TaskName) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('schtasks');
-        }
-    },
-    {
-        id: 'T1053.006',
-        name: 'Scheduled Task/Job: Systemd Timers',
-        description: 'Adversaries may use systemd timers to execute code on Linux.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/006/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('systemctl') && 
-                    commandLine.toLowerCase().includes('timer')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.timer')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('systemctl timer');
-        }
-    },
-    {
-        id: 'T1053.007',
-        name: 'Scheduled Task/Job: Container Orchestration Job',
-        description: 'Adversaries may use container orchestration jobs to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1053/007/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('kubectl') || 
-                     commandLine.toLowerCase().includes('cronjob'))) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('kubectl cronjob');
+            return typeof event === 'string' && event && event.toLowerCase().includes('msiexec');
         }
     },
     // T1106 - Native API
     {
         id: 'T1106',
         name: 'Native API',
-        description: 'Adversaries may use native APIs to execute malicious code.',
+        description: 'Adversaries may interact with the native OS API to execute behaviors.',
         mitre_link: 'https://attack.mitre.org/techniques/T1106/',
         detection: (event) => {
             if (!event) return false;
@@ -353,22 +211,19 @@ const rules = [
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
                     commandLine.toLowerCase().includes('createprocess') || 
-                    commandLine.toLowerCase().includes('ntdll')) {
+                    commandLine.toLowerCase().includes('loadlibrary')) {
                     return true;
                 }
-                if (eid === '8' && event.TargetImage?.toLowerCase().includes('.exe')) {
-                    return true; // Process creation via API
-                }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('createprocess');
+            return typeof event === 'string' && event && event.toLowerCase().includes('native api');
         }
     },
-    // T1204 - User Execution
+    // T1127 - Trusted Developer Utilities
     {
-        id: 'T1204',
-        name: 'User Execution',
-        description: 'Adversaries may rely on user execution to run malicious code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1204/',
+        id: 'T1127',
+        name: 'Trusted Developer Utilities',
+        description: 'Adversaries may take advantage of trusted developer utilities to execute code.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1127/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -376,22 +231,20 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('malicious') || 
-                    image.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                    (image.toLowerCase().includes('msbuild.exe') || 
+                     image.toLowerCase().includes('csc.exe'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious');
+            return typeof event === 'string' && event && event.toLowerCase().includes('msbuild');
         }
     },
+    // T1129 - Shared Modules
     {
-        id: 'T1204.001',
-        name: 'User Execution: Malicious Link',
-        description: 'Adversaries may use malicious links to trick users into executing code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1204/001/',
+        id: 'T1129',
+        name: 'Shared Modules',
+        description: 'Adversaries may execute malicious payloads via loading shared modules.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1129/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -399,22 +252,22 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('url') && 
-                    commandLine.toLowerCase().includes('malicious')) {
+                    commandLine.toLowerCase().includes('loadlibrary')) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationHostname?.toString().includes('.')) {
+                if (eid === '7' && event.ImageLoaded?.toLowerCase().includes('.dll')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious url');
+            return typeof event === 'string' && event && event.toLowerCase().includes('shared modules');
         }
     },
+    // T1137 - Office Application Startup
     {
-        id: 'T1204.002',
-        name: 'User Execution: Malicious File',
-        description: 'Adversaries may use malicious files to trick users into executing code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1204/002/',
+        id: 'T1137',
+        name: 'Office Application Startup',
+        description: 'Adversaries may abuse Office applications to execute malicious code.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1137/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -422,21 +275,24 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    image.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                    (image.toLowerCase().includes('winword.exe') || 
+                     image.toLowerCase().includes('excel.exe') || 
+                     commandLine.toLowerCase().includes('macro'))) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.docx|\.pdf/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.docm|\.xlsm/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('malicious file');
+            return typeof event === 'string' && event && event.toLowerCase().includes('office application');
         }
     },
+    // T1140 - Deobfuscate/Decode Files or Information
     {
-        id: 'T1204.003',
-        name: 'User Execution: Malicious Image',
-        description: 'Adversaries may use malicious container images to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1204/003/',
+        id: 'T1140',
+        name: 'Deobfuscate/Decode Files or Information',
+        description: 'Adversaries may decode or deobfuscate payloads to execute them.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1140/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -444,23 +300,20 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('docker') || 
-                    commandLine.toLowerCase().includes('container')) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('dockerfile')) {
+                    (commandLine.toLowerCase().includes('decode') || 
+                     commandLine.toLowerCase().includes('deobfuscate'))) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker');
+            return typeof event === 'string' && event && event.toLowerCase().includes('decode');
         }
     },
-    // T1569 - System Services
+    // T1183 - Image Execution
     {
-        id: 'T1569',
-        name: 'System Services',
-        description: 'Adversaries may abuse system services to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1569/',
+        id: 'T1183',
+        name: 'Image Execution',
+        description: 'Adversaries may execute malicious images to deliver malicious code.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1183/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -468,22 +321,23 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sc.exe') || 
-                     commandLine.toLowerCase().includes('sc create'))) {
+                    (image.toLowerCase().includes('mspaint.exe') || 
+                     commandLine.toLowerCase().includes('image'))) {
                     return true;
                 }
-                if (eid === '7045' && event.ServiceName) {
-                    return true; // Service creation
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.jpg|\.png/)) {
+                    return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sc create');
+            return typeof event === 'string' && event && event.toLowerCase().includes('image execution');
         }
     },
+    // T1190 - Exploit Public-Facing Application
     {
-        id: 'T1569.001',
-        name: 'System Services: Launchctl',
-        description: 'Adversaries may use launchctl to execute code on macOS.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1569/001/',
+        id: 'T1190',
+        name: 'Exploit Public-Facing Application',
+        description: 'Adversaries may exploit public-facing applications to gain access.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1190/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -491,120 +345,6 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('launchctl') || 
-                     commandLine.toLowerCase().includes('launchctl'))) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('.plist')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('launchctl');
-        }
-    },
-    {
-        id: 'T1569.002',
-        name: 'System Services: Service Execution',
-        description: 'Adversaries may execute code via system services.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1569/002/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('sc.exe') || 
-                     commandLine.toLowerCase().includes('sc start'))) {
-                    return true;
-                }
-                if (eid === '7045' && event.ServiceName) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('sc start');
-        }
-    },
-    // T1047 - Windows Management Instrumentation
-    {
-        id: 'T1047',
-        name: 'Windows Management Instrumentation',
-        description: 'Adversaries may abuse WMI to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1047/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (image.toLowerCase().includes('wmiprvse.exe') || 
-                     commandLine.toLowerCase().includes('wmic'))) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('wmic');
-        }
-    },
-    // T1609 - Container Administration Command
-    {
-        id: 'T1609',
-        name: 'Container Administration Command',
-        description: 'Adversaries may abuse container administration commands to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1609/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('docker') || 
-                     commandLine.toLowerCase().includes('kubectl'))) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker');
-        }
-    },
-    // T1610 - Deploy Container
-    {
-        id: 'T1610',
-        name: 'Deploy Container',
-        description: 'Adversaries may deploy containers to execute malicious code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1610/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    (commandLine.toLowerCase().includes('docker run') || 
-                     commandLine.toLowerCase().includes('kubectl apply'))) {
-                    return true;
-                }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('dockerfile')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('docker run');
-        }
-    },
-    // T1203 - Exploitation for Client Execution
-    {
-        id: 'T1203',
-        name: 'Exploitation for Client Execution',
-        description: 'Adversaries may exploit software vulnerabilities to execute code.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1203/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('exploit') || 
                     commandLine.toLowerCase().includes('cve')) {
                     return true;
                 }
@@ -628,8 +368,8 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().includes('com') || 
-                    commandLine.toLowerCase().includes('dde')) {
+                    (commandLine.toLowerCase().includes('com') || 
+                     commandLine.toLowerCase().includes('dde'))) {
                     return true;
                 }
             }
@@ -702,4 +442,5 @@ const rules = [
             return typeof event === 'string' && event && event.toLowerCase().includes('msiexec');
         }
     }
+    // Additional techniques and sub-techniques can be added for full coverage...
 ];
