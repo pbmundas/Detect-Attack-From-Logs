@@ -238,7 +238,7 @@
                     <h4 class="text-lg font-semibold text-gray-800 mt-2">Matches:</h4>
                     <ul class="list-disc ml-6 text-gray-700">`;
                 for (let match of threat.matches) {
-                    let formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>g, '&gt;') : match;
+                    let formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') : match;
                     formattedMatch = highlightMatches(formattedMatch, threat.pattern);
                     report += `<li>${formattedMatch}</li>`;
                 }
