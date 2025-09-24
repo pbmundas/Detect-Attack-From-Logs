@@ -14,30 +14,34 @@
             animation: fadeIn 0.5s ease-in-out;
         }
         .report-container {
-            max-height: 60vh; /* Limit height to 60% of viewport height */
-            overflow-y: auto; /* Enable vertical scrolling */
-            overflow-x: hidden; /* Prevent horizontal scrolling */
-            word-break: break-word; /* Ensure long text wraps */
-            white-space: pre-wrap; /* Preserve whitespace but allow wrapping */
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-break: break-word;
+            white-space: pre-wrap;
         }
         .report-container li {
-            margin-bottom: 0.5rem; /* Space between list items */
+            margin-bottom: 0.5rem;
         }
         .hover-scale {
             transition: transform 0.2s;
         }
         .hover-scale:hover {
-            transform: scale(1.02); /* Subtle hover effect */
+            transform: scale(1.02);
         }
         body {
-            min-height: 100vh; /* Ensure body takes full viewport height */
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .container {
             width: 100%;
-            max-width: 900px; /* Increased max-width for better readability */
+            max-width: 900px;
+        }
+        .highlight {
+            background-color: #fefcbf; /* Light yellow for highlighting */
+            font-weight: bold;
         }
     </style>
 </head>
@@ -47,11 +51,11 @@
         <p class="text-gray-600 mb-6 text-center">Upload an EVTX (exported as XML), CSV, LOG or JSON to hunt for threats based on MITRE ATT&CK techniques. Works well with windows, sysmon logs and you can try for other logs which may work partially. Find hunting resources <a style="color:blue;" href="https://pbmundas.github.io/library/" target="_blank">here</a></p>
         <div class="flex flex-col items-center space-y-4">
             <input type="file" id="fileInput" accept=".xml,.csv,.log,.evtx,.json" class="border border-gray-300 rounded-lg p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-md">
-            <button onclick="processFile()" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Hunt</button>  <button onclick="location.reload();" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 hover-scale transition duration-200">Another</button>
+            <button onclick="processFile()" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 hover-scale transition duration-200">Hunt</button>
+            <button onclick="location.reload();" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 hover-scale transition duration-200">Another</button>
         </div>
         <div id="report" class="report-container mt-6 p-6 bg-gray-50 rounded-lg shadow-inner"></div>
     </div>
-
     <script>
         // Parse XML (for EVTX exported as XML)
         function parseXML(content) {
@@ -82,7 +86,6 @@
             }
             return events;
         }
-
         // Parse CSV
         function parseCSV(content) {
             const lines = content.split('\n').filter(line => line.trim());
@@ -94,9 +97,7 @@
                 headers.forEach((header, idx) => {
                     event[header] = values[idx] || '';
                 });
-                // Standardize EventID
                 event.EventID = event.EventID || event.EventId || '';
-                // If Payload exists, parse it to extract additional fields
                 if (event.Payload) {
                     try {
                         const payload = JSON.parse(event.Payload);
@@ -116,35 +117,29 @@
             }
             return events;
         }
-
         // Parse LOG (plain text)
         function parseLog(content) {
             return content.split('\n').filter(line => line.trim());
         }
-
         // Parse JSON (handle both single object/array and NDJSON)
         function parseJSON(content) {
             try {
-                // First, try parsing as a single JSON
                 const parsed = JSON.parse(content);
                 if (Array.isArray(parsed)) {
                     return parsed;
                 } else if (typeof parsed === 'object' && parsed !== null) {
-                    // Look for common array properties
                     const possibleKeys = ['events', 'data', 'records', 'logs', 'items', 'Event'];
                     for (let key of possibleKeys) {
                         if (Array.isArray(parsed[key])) {
                             return parsed[key];
                         }
                     }
-                    // If no array found, assume single event
                     return [parsed];
                 } else {
                     throw new Error('Invalid JSON structure. Expected an array of events or an object containing an array of events.');
                 }
             } catch (e) {
                 if (e instanceof SyntaxError) {
-                    // Try parsing as NDJSON (newline-delimited JSON)
                     const lines = content.split('\n').filter(line => line.trim());
                     const events = [];
                     for (let line of lines) {
@@ -153,7 +148,6 @@
                             events.push(obj);
                         } catch (lineError) {
                             console.error('Error parsing JSON line:', lineError, line);
-                            // Skip invalid lines
                         }
                     }
                     if (events.length === 0) {
@@ -165,12 +159,10 @@
                 }
             }
         }
-
-        // Handle EVTX (instruct user to convert to XML)
+        // Handle EVTX
         function handleEVTX() {
             return '<p class="text-red-600 font-semibold">EVTX files are not directly supported in the browser. Please export the EVTX file to XML using Windows Event Viewer (File > Save As > XML) and upload the XML file.</p>';
         }
-
         // Hunt for threats
         function hunt(events, fileType) {
             const threats = [];
@@ -179,13 +171,26 @@
                 if (matches.length) {
                     threats.push({
                         technique: rule,
-                        matches: matches.slice(0, 10) // Limit to 10 for brevity
+                        matches: matches.slice(0, 10),
+                        pattern: rule.pattern || rule.detection.toString() // Assume rule has pattern or use detection function as fallback
                     });
                 }
             }
             return threats;
         }
-
+        // Highlight matches in text
+        function highlightMatches(text, pattern) {
+            if (!pattern) return text;
+            try {
+                // Escape special regex characters if pattern is a string
+                const escapedPattern = typeof pattern === 'string' ? pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : pattern.source;
+                const regex = new RegExp(`(${escapedPattern})`, 'gi');
+                return text.replace(regex, '<span class="highlight">$1</span>');
+            } catch (e) {
+                console.error('Error highlighting matches:', e);
+                return text;
+            }
+        }
         // Generate HTML report
         function generateReport(threats) {
             let report = '<h2 class="text-2xl font-semibold text-gray-800 mb-4">Threat Hunt Report</h2>';
@@ -202,14 +207,14 @@
                     <h4 class="text-lg font-semibold text-gray-800 mt-2">Matches:</h4>
                     <ul class="list-disc ml-6 text-gray-700">`;
                 for (let match of threat.matches) {
-                    const formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') : match;
+                    let formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') : match;
+                    formattedMatch = highlightMatches(formattedMatch, threat.pattern);
                     report += `<li>${formattedMatch}</li>`;
                 }
                 report += '</ul></div>';
             }
             return report;
         }
-
         // Process uploaded file
         function processFile() {
             const fileInput = document.getElementById('fileInput');
@@ -219,13 +224,11 @@
                 reportDiv.innerHTML = '<p class="text-red-600 font-semibold">Please select a file.</p>';
                 return;
             }
-
             const ext = file.name.split('.').pop().toLowerCase();
             if (ext === 'evtx') {
                 reportDiv.innerHTML = handleEVTX();
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const content = e.target.result;
@@ -255,39 +258,34 @@
             };
             reader.readAsText(file);
         }
-	</script>
-		
-	<script src="execution_rules_fixed.js">// Rules for threat hunting, mapped to MITRE techniques</script>
-	<script src="initial_access_rules_fixed.js"></script>
-	<script src="resource_development_rules_fixed.js"></script>
-	<script src="reconnaissance_rules_fixed.js"></script>
-	<script src="persistence_rules_fixed.js"></script>
-	<script src="privilege_escalation_rules_fixed.js"></script>
-	<script src="defense_evasion_rules_fixed.js"></script>
+    </script>
+    <script src="execution_rules_fixed.js"></script>
+    <script src="initial_access_rules_fixed.js"></script>
+    <script src="resource_development_rules_fixed.js"></script>
+    <script src="reconnaissance_rules_fixed.js"></script>
+    <script src="persistence_rules_fixed.js"></script>
+    <script src="privilege_escalation_rules_fixed.js"></script>
+    <script src="defense_evasion_rules_fixed.js"></script>
     <script src="credential_access_rules.js"></script>
     <script src="discovery_rules.js"></script>
-	<script src="lateral_movement_rules.js"></script>
-	<script src="collection_rules.js"></script>
-	<script src="command_and_control_rules.js"></script>
-	<script src="exfiltration_rules.js"></script>
-	<script src="impact_rules.js"></script>
-	<script src="linux_reconnaissance_detection_rules.js"></script>
-	<script src="linux_resource_development_detection_rules.js"></script>
-	<script src="linux_initial_access_detection_rules.js"></script>
-	<script src="linux_execution_detection_rules.js"></script>
-	<script src="linux_persistence_detection_rules.js"></script>
-	<script src="linux_privilege_escalation_detection_rules.js"></script>
-	<script src="linux_defense_evasion_detection_rules.js"></script>
-	<script src="linux_credential_access_detection_rules.js"></script>
-	<script src="linux_discovery_detection_rules.js"></script>
-	<script src="linux_lateral_movement_detection_rules.js"></script>
-	<script src="linux_collection_detection_rules.js"></script>
-	<script src="linux_command_and_control_detection_rules.js"></script>
-	<script src="linux_exfiltration_detection_rules.js"></script>
-	<script src="linux_impact_detection_rules.js"></script>
-	
+    <script src="lateral_movement_rules.js"></script>
+    <script src="collection_rules.js"></script>
+    <script src="command_and_control_rules.js"></script>
+    <script src="exfiltration_rules.js"></script>
+    <script src="impact_rules.js"></script>
+    <script src="linux_reconnaissance_detection_rules.js"></script>
+    <script src="linux_resource_development_detection_rules.js"></script>
+    <script src="linux_initial_access_detection_rules.js"></script>
+    <script src="linux_execution_detection_rules.js"></script>
+    <script src="linux_persistence_detection_rules.js"></script>
+    <script src="linux_privilege_escalation_detection_rules.js"></script>
+    <script src="linux_defense_evasion_detection_rules.js"></script>
+    <script src="linux_credential_access_detection_rules.js"></script>
+    <script src="linux_discovery_detection_rules.js"></script>
+    <script src="linux_lateral_movement_detection_rules.js"></script>
+    <script src="linux_collection_detection_rules.js"></script>
+    <script src="linux_command_and_control_detection_rules.js"></script>
+    <script src="linux_exfiltration_detection_rules.js"></script>
+    <script src="linux_impact_detection_rules.js"></script>
 </body>
-
 </html>
-
-
