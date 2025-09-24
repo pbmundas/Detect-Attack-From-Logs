@@ -3,7 +3,7 @@ const rules = [
     {
         id: 'T1485',
         name: 'Data Destruction',
-        description: 'Adversaries may destroy data to disrupt availability.',
+        description: 'Adversaries may destroy data to disrupt operations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1485/',
         detection: (event) => {
             if (!event) return false;
@@ -26,7 +26,7 @@ const rules = [
     {
         id: 'T1486',
         name: 'Data Encrypted for Impact',
-        description: 'Adversaries may encrypt data for ransom or disruption.',
+        description: 'Adversaries may encrypt data to demand ransom or disrupt operations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1486/',
         detection: (event) => {
             if (!event) return false;
@@ -45,34 +45,11 @@ const rules = [
             return typeof event === 'string' && event && event.toLowerCase().includes('data encrypted');
         }
     },
-    // T1490 - Inhibit System Recovery
-    {
-        id: 'T1490',
-        name: 'Inhibit System Recovery',
-        description: 'Adversaries may inhibit system recovery to prevent data restoration.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1490/',
-        detection: (event) => {
-            if (!event) return false;
-            const eid = event.EventID || event.EventId || '';
-            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
-            const commandLine = (event.CommandLine || event.Message || '').toString();
-            if (typeof event === 'object') {
-                if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/vssadmin delete|bcdedit.*bootstatuspolicy/)) {
-                    return true;
-                }
-                if (eid === '7045' && event.ServiceName?.toLowerCase().includes('shadow')) {
-                    return true;
-                }
-            }
-            return typeof event === 'string' && event && event.toLowerCase().includes('system recovery');
-        }
-    },
     // T1491 - Defacement
     {
         id: 'T1491',
         name: 'Defacement',
-        description: 'Adversaries may deface systems or websites for impact.',
+        description: 'Adversaries may deface systems or websites to disrupt operations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1491/',
         detection: (event) => {
             if (!event) return false;
@@ -94,7 +71,7 @@ const rules = [
     {
         id: 'T1491.001',
         name: 'Defacement: Internal Defacement',
-        description: 'Adversaries may deface internal systems for impact.',
+        description: 'Adversaries may deface internal systems.',
         mitre_link: 'https://attack.mitre.org/techniques/T1491/001/',
         detection: (event) => {
             if (!event) return false;
@@ -103,22 +80,21 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/deface.*internal|modify.*intranet/)) {
+                    commandLine.toLowerCase().match(/deface.*internal|modify.*desktop/)) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.html|\.asp/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/desktop.*\.txt|config.*\.conf/)) {
                     return true;
                 }
             }
             return typeof event === 'string' && event && event.toLowerCase().includes('internal defacement');
         }
     },
-    // T1495 - Firmware Corruption
     {
-        id: 'T1495',
-        name: 'Firmware Corruption',
-        description: 'Adversaries may corrupt firmware to disrupt operations.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1495/',
+        id: 'T1491.002',
+        name: 'Defacement: External Defacement',
+        description: 'Adversaries may deface external websites.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1491/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -126,22 +102,22 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/flash.*corrupt|bios.*update/)) {
+                    commandLine.toLowerCase().match(/deface.*web|modify.*site/)) {
                     return true;
                 }
-                if (eid === '13' && event.TargetObject?.toLowerCase().includes('firmware')) {
+                if (eid === '3' && event.DestinationHostname?.toLowerCase().match(/web|http/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('firmware corruption');
+            return typeof event === 'string' && event && event.toLowerCase().includes('external defacement');
         }
     },
-    // T1496 - Resource Hijacking
+    // T1490 - Inhibit System Recovery
     {
-        id: 'T1496',
-        name: 'Resource Hijacking',
-        description: 'Adversaries may hijack system resources for cryptocurrency mining.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1496/',
+        id: 'T1490',
+        name: 'Inhibit System Recovery',
+        description: 'Adversaries may inhibit system recovery mechanisms.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1490/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -149,21 +125,44 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/minerd|xmrig|crypto.*mine/)) {
+                    commandLine.toLowerCase().match(/vssadmin.*delete|bcdedit.*recovery/)) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.exe|\.sh/)) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().match(/shadowcopy|recovery/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('resource hijacking');
+            return typeof event === 'string' && event && event.toLowerCase().includes('inhibit system recovery');
+        }
+    },
+    // T1489 - Service Stop
+    {
+        id: 'T1489',
+        name: 'Service Stop',
+        description: 'Adversaries may stop services to disrupt operations.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1489/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/net stop|sc stop|systemctl stop/)) {
+                    return true;
+                }
+                if (eid === '7045' && event.ServiceName?.toLowerCase().includes('stop')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('service stop');
         }
     },
     // T1498 - Network Denial of Service
     {
         id: 'T1498',
         name: 'Network Denial of Service',
-        description: 'Adversaries may perform DoS attacks to disrupt network availability.',
+        description: 'Adversaries may perform network denial of service attacks.',
         mitre_link: 'https://attack.mitre.org/techniques/T1498/',
         detection: (event) => {
             if (!event) return false;
@@ -172,21 +171,65 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/ddos|hping|synflood/)) {
+                    commandLine.toLowerCase().match(/hping|slowloris|dos/)) {
                     return true;
                 }
-                if (eid === '5152' && event.SourcePort && event.DestinationPort) {
+                if (eid === '3' && event.DestinationIp && event.PacketsSent && parseInt(event.PacketsSent) > 1000) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('network denial');
+            return typeof event === 'string' && event && event.toLowerCase().includes('denial of service');
+        }
+    },
+    {
+        id: 'T1498.001',
+        name: 'Network Denial of Service: Direct Network Flood',
+        description: 'Adversaries may perform direct network flood DoS attacks.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1498/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/flood|syn.*flood|udp.*flood/)) {
+                    return true;
+                }
+                if (eid === '3' && event.Protocol?.toLowerCase().match(/tcp|udp/) && event.PacketsSent && parseInt(event.PacketsSent) > 1000) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('direct network flood');
+        }
+    },
+    {
+        id: 'T1498.002',
+        name: 'Network Denial of Service: Reflection Amplification',
+        description: 'Adversaries may use reflection amplification for DoS attacks.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1498/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/ntp.*amplification|dns.*amplification/)) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationPort?.toString().match(/123|53/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('reflection amplification');
         }
     },
     // T1499 - Endpoint Denial of Service
     {
         id: 'T1499',
         name: 'Endpoint Denial of Service',
-        description: 'Adversaries may perform DoS attacks on endpoints.',
+        description: 'Adversaries may perform endpoint denial of service attacks.',
         mitre_link: 'https://attack.mitre.org/techniques/T1499/',
         detection: (event) => {
             if (!event) return false;
@@ -195,14 +238,102 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/slowloris|endpoint.*flood/)) {
+                    commandLine.toLowerCase().match(/forkbomb|crash.*system/)) {
                     return true;
                 }
-                if (eid === '5156' && event.Application) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('system')) {
                     return true;
                 }
             }
             return typeof event === 'string' && event && event.toLowerCase().includes('endpoint denial');
+        }
+    },
+    {
+        id: 'T1499.001',
+        name: 'Endpoint Denial of Service: OS Exhaustion Flood',
+        description: 'Adversaries may exhaust OS resources for DoS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1499/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/forkbomb|consume.*cpu/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('memory')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('os exhaustion');
+        }
+    },
+    {
+        id: 'T1499.002',
+        name: 'Endpoint Denial of Service: Service Exhaustion Flood',
+        description: 'Adversaries may exhaust services for DoS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1499/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/service.*flood|overload.*service/)) {
+                    return true;
+                }
+                if (eid === '7045' && event.ServiceName?.toLowerCase().includes('flood')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('service exhaustion');
+        }
+    },
+    {
+        id: 'T1499.003',
+        name: 'Endpoint Denial of Service: Application Exhaustion Flood',
+        description: 'Adversaries may exhaust applications for DoS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1499/003/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/application.*flood|overload.*app/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('application')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('application exhaustion');
+        }
+    },
+    {
+        id: 'T1499.004',
+        name: 'Endpoint Denial of Service: Application or System Exploitation',
+        description: 'Adversaries may exploit applications or systems for DoS.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1499/004/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/exploit.*crash|vuln.*dos/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('exploit')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('application exploitation');
         }
     },
     // T1565 - Data Manipulation
@@ -218,22 +349,21 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/sed.*replace|modify.*data/)) {
+                    commandLine.toLowerCase().match(/modify.*data|alter.*file/)) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.csv|\.json/)) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.db|\.sql/)) {
                     return true;
                 }
             }
             return typeof event === 'string' && event && event.toLowerCase().includes('data manipulation');
         }
     },
-    // T1650 - Endpoint Data Deletion
     {
-        id: 'T1650',
-        name: 'Endpoint Data Deletion',
-        description: 'Adversaries may delete data on endpoints to disrupt operations.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1650/',
+        id: 'T1565.001',
+        name: 'Data Manipulation: Stored Data Manipulation',
+        description: 'Adversaries may manipulate stored data.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1565/001/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -241,22 +371,21 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/del.*endpoint|rm.*-r/)) {
+                    commandLine.toLowerCase().match(/sql.*update|modify.*database/)) {
                     return true;
                 }
-                if (eid === '11' && event.TargetFilename) {
+                if (eid === '11' && event.TargetFilename?.toLowerCase().match(/\.db|\.sql/)) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('endpoint data deletion');
+            return typeof event === 'string' && event && event.toLowerCase().includes('stored data manipulation');
         }
     },
-    // T1651 - Distributed Component Object Model
     {
-        id: 'T1651',
-        name: 'Distributed Component Object Model',
-        description: 'Adversaries may use DCOM for remote impact.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1651/',
+        id: 'T1565.002',
+        name: 'Data Manipulation: Transmitted Data Manipulation',
+        description: 'Adversaries may manipulate transmitted data.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1565/002/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -264,22 +393,21 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/dcom|ole.*remote/)) {
+                    commandLine.toLowerCase().match(/mitm|intercept.*data/)) {
                     return true;
                 }
-                if (eid === '3' && event.DestinationPort?.toString() === '135') {
+                if (eid === '3' && event.DestinationIp && event.Data?.toLowerCase().includes('modify')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('dcom');
+            return typeof event === 'string' && event && event.toLowerCase().includes('transmitted data manipulation');
         }
     },
-    // T1656 - Trusted Relationship Abuse
     {
-        id: 'T1656',
-        name: 'Trusted Relationship Abuse',
-        description: 'Adversaries may abuse trusted relationships for impact.',
-        mitre_link: 'https://attack.mitre.org/techniques/T1656/',
+        id: 'T1565.003',
+        name: 'Data Manipulation: Runtime Data Manipulation',
+        description: 'Adversaries may manipulate data at runtime.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1565/003/',
         detection: (event) => {
             if (!event) return false;
             const eid = event.EventID || event.EventId || '';
@@ -287,21 +415,134 @@ const rules = [
             const commandLine = (event.CommandLine || event.Message || '').toString();
             if (typeof event === 'object') {
                 if ((eid === '1' || eid === '4688') && 
-                    commandLine.toLowerCase().match(/trust.*abuse|kerberos.*delegate/)) {
+                    commandLine.toLowerCase().match(/hook.*data|runtime.*modify/)) {
                     return true;
                 }
-                if (eid === '4672' && event.Privileges?.includes('SeEnableDelegationPrivilege')) {
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('runtime')) {
                     return true;
                 }
             }
-            return typeof event === 'string' && event && event.toLowerCase().includes('trusted relationship');
+            return typeof event === 'string' && event && event.toLowerCase().includes('runtime data manipulation');
+        }
+    },
+    // T1495 - Firmware Corruption
+    {
+        id: 'T1495',
+        name: 'Firmware Corruption',
+        description: 'Adversaries may corrupt firmware to disrupt operations.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1495/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/firmware.*update|bios.*corrupt/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('firmware')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('firmware corruption');
+        }
+    },
+    // T1496 - Resource Hijacking
+    {
+        id: 'T1496',
+        name: 'Resource Hijacking',
+        description: 'Adversaries may hijack resources for unauthorized use.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1496/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/miner|cryptojack/)) {
+                    return true;
+                }
+                if (eid === '3' && event.DestinationHostname?.toLowerCase().match(/mining|pool/)) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('resource hijacking');
+        }
+    },
+    // T1561 - Disk Wipe
+    {
+        id: 'T1561',
+        name: 'Disk Wipe',
+        description: 'Adversaries may wipe disks to disrupt operations.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1561/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/dd.*if=|wipe.*disk/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('disk')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('disk wipe');
+        }
+    },
+    {
+        id: 'T1561.001',
+        name: 'Disk Wipe: Disk Content Wipe',
+        description: 'Adversaries may wipe disk content to disrupt operations.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1561/001/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/dd.*if=/)) {
+                    return true;
+                }
+                if (eid === '11' && event.TargetFilename?.toLowerCase().includes('wipe')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('disk content wipe');
+        }
+    },
+    {
+        id: 'T1561.002',
+        name: 'Disk Wipe: Disk Structure Wipe',
+        description: 'Adversaries may wipe disk structures to disrupt operations.',
+        mitre_link: 'https://attack.mitre.org/techniques/T1561/002/',
+        detection: (event) => {
+            if (!event) return false;
+            const eid = event.EventID || event.EventId || '';
+            const image = (event.Image || event.NewProcessName || event.TargetUserName || '').toString();
+            const commandLine = (event.CommandLine || event.Message || '').toString();
+            if (typeof event === 'object') {
+                if ((eid === '1' || eid === '4688') && 
+                    commandLine.toLowerCase().match(/format.*disk|fdisk/)) {
+                    return true;
+                }
+                if (eid === '13' && event.TargetObject?.toLowerCase().includes('partition')) {
+                    return true;
+                }
+            }
+            return typeof event === 'string' && event && event.toLowerCase().includes('disk structure wipe');
         }
     },
     // T1529 - System Shutdown/Reboot
     {
         id: 'T1529',
         name: 'System Shutdown/Reboot',
-        description: 'Adversaries may shut down or reboot systems for impact.',
+        description: 'Adversaries may shut down or reboot systems to disrupt operations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1529/',
         detection: (event) => {
             if (!event) return false;
@@ -324,7 +565,7 @@ const rules = [
     {
         id: 'T1531',
         name: 'Account Access Removal',
-        description: 'Adversaries may remove account access for impact.',
+        description: 'Adversaries may remove account access to disrupt operations.',
         mitre_link: 'https://attack.mitre.org/techniques/T1531/',
         detection: (event) => {
             if (!event) return false;
@@ -347,7 +588,7 @@ const rules = [
     {
         id: 'T1657',
         name: 'Financial Theft',
-        description: 'Adversaries may steal financial assets or data.',
+        description: 'Adversaries may steal financial data or resources.',
         mitre_link: 'https://attack.mitre.org/techniques/T1657/',
         detection: (event) => {
             if (!event) return false;
@@ -366,5 +607,4 @@ const rules = [
             return typeof event === 'string' && event && event.toLowerCase().includes('financial theft');
         }
     }
-    // Additional techniques can be added for full coverage...
 ];
