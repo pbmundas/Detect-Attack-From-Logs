@@ -203,6 +203,7 @@
                     threats.push({
                         technique: rule,
                         matches: matches.slice(0, 10),
+                        totalMatches: matches.length,
                         pattern: pattern
                     });
                 }
@@ -237,7 +238,7 @@
                     <h4 class="text-lg font-semibold text-gray-800 mt-2">Matches:</h4>
                     <ul class="list-disc ml-6 text-gray-700">`;
                 for (let match of threat.matches) {
-                    let formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;') : match;
+                    let formattedMatch = typeof match === 'object' ? JSON.stringify(match, null, 2).replace(/</g, '&lt;').replace(/>g, '&gt;') : match;
                     formattedMatch = highlightMatches(formattedMatch, threat.pattern);
                     report += `<li>${formattedMatch}</li>`;
                 }
@@ -253,19 +254,47 @@
             let description = '<p class="text-gray-700">The threat hunt detected the following based on the log analysis:</p><ul class="list-disc ml-5 mt-2 text-gray-700">';
             threats.forEach(threat => {
                 const tech = threat.technique;
-                // Extract evidence (e.g., commands, processes) from the first match as an example
-                const firstMatch = threat.matches[0] || {};
-                let evidence = '';
-                if (firstMatch.CommandLine || firstMatch.commandLine) {
-                    evidence = `Command: "${firstMatch.CommandLine || firstMatch.commandLine}"`;
-                } else if (firstMatch.ProcessName || firstMatch.processName) {
-                    evidence = `Process: "${firstMatch.ProcessName || firstMatch.processName}"`;
-                } else if (firstMatch.EventID) {
-                    evidence = `Event ID: "${firstMatch.EventID}"`;
-                } else {
-                    evidence = 'Evidence: No specific command or process identified.';
-                }
-                description += `<li>${tech.name} (${tech.id}): ${tech.description.split('.')[0]}. Detected evidence: ${evidence}.</li>`;
+                // Extract evidences from all matches
+                let evidenceList = [];
+                threat.matches.forEach(match => {
+                    if (match.CommandLine || match.commandLine) {
+                        evidenceList.push(`Command: "${match.CommandLine || match.commandLine}"`);
+                    }
+                    if (match.EventID) {
+                        evidenceList.push(`Event ID: ${match.EventID}`);
+                    }
+                    if (match.Image) {
+                        evidenceList.push(`Image: "${match.Image}"`);
+                    }
+                    if (match.SourceImage) {
+                        evidenceList.push(`Source Image: "${match.SourceImage}"`);
+                    }
+                    if (match.TargetImage) {
+                        evidenceList.push(`Target Image: "${match.TargetImage}"`);
+                    }
+                    if (match.ProcessName) {
+                        evidenceList.push(`Process: "${match.ProcessName}"`);
+                    }
+                    if (match.QueryName) {
+                        evidenceList.push(`Query Name: "${match.QueryName}"`);
+                    }
+                    if (match.GrantedAccess) {
+                        evidenceList.push(`Granted Access: "${match.GrantedAccess}"`);
+                    }
+                    if (match.ObjectName) {
+                        evidenceList.push(`Object Name: "${match.ObjectName}"`);
+                    }
+                    if (match.CallTrace) {
+                        // Truncate if too long
+                        let trace = match.CallTrace.substring(0, 100) + (match.CallTrace.length > 100 ? '...' : '');
+                        evidenceList.push(`Call Trace: "${trace}"`);
+                    }
+                    // Add more fields if needed
+                });
+                // Get unique evidences
+                let uniqueEvidences = [...new Set(evidenceList)];
+                let evidence = uniqueEvidences.join('; ') || 'Evidence: No specific command or process identified.';
+                description += `<li>${tech.name} (${tech.id}): ${tech.description} Detected in ${threat.totalMatches} log entries. Detected evidences: ${evidence}.</li>`;
             });
             description += '</ul>';
             return description;
