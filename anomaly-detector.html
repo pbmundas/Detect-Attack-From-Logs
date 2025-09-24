@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Log Anomaly Detector - Threat Hunting Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css">
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background-color: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        p {
+            font-size: 1.1em;
+            color: #7f8c8d;
+            max-width: 800px;
+        }
+        #upload-section {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            font-size: 1em;
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        #stats {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #stats-table, #details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        #stats-table th, #stats-table td, #details-table th, #details-table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        #stats-table th, #details-table th {
+            background-color: #ecf0f1;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        #stats-table td, #details-table td {
+            font-size: 0.9em;
+            color: #34495e;
+        }
+        #table-container {
+            margin-bottom: 25px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 15px;
+        }
+        table {
+            width: 100%;
+            table-layout: auto;
+        }
+        .dataTables_wrapper {
+            font-size: 0.95em;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            word-wrap: break-word;
+            word-break: break-all;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        th {
+            background-color: #ecf0f1;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        td {
+            font-size: 0.9em;
+            color: #34495e;
+        }
+        .anomaly {
+            background-color: #f39c12 !important;
+            font-weight: bold;
+        }
+        .threat {
+            background-color: #e74c3c !important;
+            color: white;
+        }
+        #charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        #anomalies {
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        #anomalies ul {
+            list-style: none;
+            padding: 0;
+        }
+        #anomalies li {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid;
+            border-radius: 5px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+        #anomalies li.anomaly {
+            border-color: #f39c12;
+            background-color: #fef5e7;
+        }
+        #anomalies li.threat {
+            border-color: #e74c3c;
+            background-color: #f9ebea;
+        }
+        #exportBtn {
+            background-color: #27ae60;
+        }
+        #exportBtn:hover {
+            background-color: #219a52;
+        }
+        @media (max-width: 768px) {
+            #charts {
+                grid-template-columns: 1fr;
+            }
+            #stats-table, #details-table {
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Ultimate Log Anomaly Detector - Threat Hunting Pro</h1>
+    <p>Client-side threat hunting with advanced Sysmon/Windows log analysis, MITRE ATT&CK-mapped rules, and dynamic visualizations. Optimized for comprehensive threat detection in logs like SharpView usage.</p>
+    <div id="upload-section">
+        <input type="file" id="fileInput" accept=".txt,.log,.csv,.json,.xml" multiple>
+        <button onclick="processFiles()">Analyze Logs</button>
+        <button id="exportBtn" onclick="exportAnomalies()" style="display:none;">Export Anomalies to CSV</button>
+    </div>
+    <div id="stats"></div>
+    <div id="table-container">
+        <table id="logTable" class="display">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id="charts"></div>
+    <div id="anomalies">
+        <h2>Detected Anomalies & Threats (MITRE ATT&CK Mapped)</h2>
+        <ul id="anomalyList"></ul>
+    </div>
+
+    <script>
+        let allLogs = [];
+        let headers = [];
+        let table;
+        let anomalies = [];
+        let fieldMappings = {
+            timestamp: ['@timestamp', 'TimeCreated', 'UtcTime', 'timestamp'],
+            ip: ['SourceIp', 'DestinationIp', 'ip', 'IP', 'IpAddress', 'SourceHostname', 'DestinationHostname'],
+            user: ['SubjectUserName', 'User', 'user', 'AccountName', 'SubjectUserSid'],
+            event: ['EventID', 'event', 'Task', 'Opcode', 'RuleName', 'Level'],
+            details: ['Message', 'details', 'CommandLine', 'QueryName', 'Image', 'CallTrace']
+        };
+
+        // Parsing functions
+        function parseTxtOrLog(content) {
+            return content.split('\n').filter(line => line.trim()).map(line => {
+                const obj = {};
+                const matches = line.match(/(\w+)=([^=]*)(?=\s\w+=|$)/g) || [];
+                matches.forEach(m => {
+                    const [k, v] = m.split('=');
+                    obj[k.trim()] = v ? v.trim() : '';
+                });
+                if (!matches.length) obj.details = line;
+                return obj;
+            });
+        }
+
+        function parseCsv(content) {
+            return Papa.parse(content, { header: true, skipEmptyLines: true }).data;
+        }
+
+        function parseJson(content) {
+            return content.split('\n').filter(line => line.trim()).map(line => {
+                try { return JSON.parse(line); } catch (e) { return {}; }
+            });
+        }
+
+        function parseXml(content) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(content, "text/xml");
+            const entries = xmlDoc.querySelectorAll('Event, entry, log');
+            return Array.from(entries).map(entry => {
+                const obj = {};
+                entry.querySelectorAll('*').forEach(child => {
+                    if (child.children.length === 0) obj[child.tagName] = child.textContent.trim();
+                });
+                return obj;
+            });
+        }
+
+        function getParser(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'csv') return parseCsv;
+            if (ext === 'json') return parseJson;
+            if (ext === 'xml') return parseXml;
+            return parseTxtOrLog;
+        }
+
+        async function processFiles() {
+            const files = document.getElementById('fileInput').files;
+            allLogs = [];
+            if (files.length === 0) return;
+
+            for (let file of files) {
+                const text = await file.text();
+                const parser = getParser(file);
+                const parsed = parser(text).filter(log => Object.keys(log).length > 0);
+                allLogs = allLogs.concat(parsed.map(log => ({ ...log, source: file.name })));
+            }
+
+            const tsField = getField('timestamp');
+            if (tsField) allLogs.sort((a, b) => luxon.DateTime.fromISO(a[tsField]) - luxon.DateTime.fromISO(b[tsField]));
+
+            renderStats();
+            renderTable();
+            renderCharts();
+            detectAnomalies();
+            document.getElementById('exportBtn').style.display = 'inline-block';
+        }
+
+        function getField(category) {
+            return fieldMappings[category].find(field => allLogs.some(log => log[field] !== undefined)) || '';
+        }
+
+        function renderStats() {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = '<h2>Log Intelligence Summary</h2>';
+
+            const uniqueCommandLines = new Set(allLogs.map(log => log.CommandLine).filter(Boolean));
+            const uniqueSourceIPs = new Set(allLogs.map(log => log.SourceIp || log.SourceHostname).filter(Boolean));
+            const uniqueDestIPs = new Set(allLogs.map(log => log.DestinationIp || log.DestinationHostname).filter(Boolean));
+            const uniqueSourcePorts = new Set(allLogs.map(log => log.SourcePort).filter(Boolean));
+            const uniqueDestPorts = new Set(allLogs.map(log => log.DestinationPort).filter(Boolean));
+            const uniqueProcesses = new Set(allLogs.map(log => log.ProcessName || log.NewProcessName || log.Image).filter(Boolean));
+            const uniqueParentProcesses = new Set(allLogs.map(log => log.ParentProcessName || log.ParentImage).filter(Boolean));
+            const uniqueHashes = new Set(allLogs.map(log => log.Hash || log.Hashes).filter(Boolean));
+            const uniqueChannels = new Set(allLogs.map(log => log.Channel).filter(Boolean));
+            const uniqueLogonTypes = new Set(allLogs.map(log => log.LogonType).filter(Boolean));
+            const uniqueProviders = new Set(allLogs.map(log => log.SourceName || log.ProviderGuid).filter(Boolean));
+            const uniqueLogonIds = new Set(allLogs.map(log => log.LogonId || log.SubjectLogonId).filter(Boolean));
+            const uniqueSIDs = new Set(allLogs.map(log => log.SubjectUserSid || log.TargetUserSid).filter(Boolean));
+            const uniqueDomains = new Set(allLogs.map(log => log.SubjectDomainName || log.TargetDomainName).filter(Boolean));
+            const uniqueFiles = new Set(allLogs.map(log => log.TargetFilename || log.FileName).filter(Boolean));
+            const uniqueRegistryKeys = new Set(allLogs.map(log => log.TargetObject || log.ObjectName).filter(Boolean));
+            const uniqueNetworkProtocols = new Set(allLogs.map(log => log.Protocol).filter(Boolean));
+            const uniqueGrantedAccess = new Set(allLogs.map(log => log.GrantedAccess).filter(Boolean));
+            const uniqueCallTraces = new Set(allLogs.map(log => log.CallTrace).filter(Boolean));
+            const uniqueSources = new Set(allLogs.map(log => log.source)).size;
+            const userField = getField('user');
+            const eventField = getField('event');
+            const tsField = getField('timestamp');
+
+            // Stats Table
+            const statsTable = document.createElement('table');
+            statsTable.id = 'stats-table';
+            statsTable.innerHTML = `
+                <tr><th>Category</th><th>Count</th></tr>
+                <tr><td>Total Entries</td><td>${allLogs.length}</td></tr>
+                <tr><td>Unique Source IPs</td><td>${uniqueSourceIPs.size}</td></tr>
+                <tr><td>Unique Destination IPs</td><td>${uniqueDestIPs.size}</td></tr>
+                <tr><td>Unique Source Ports</td><td>${uniqueSourcePorts.size}</td></tr>
+                <tr><td>Unique Destination Ports</td><td>${uniqueDestPorts.size}</td></tr>
+                <tr><td>Unique Users</td><td>${new Set(allLogs.map(log => log[userField])).size}</td></tr>
+                <tr><td>Unique Events</td><td>${new Set(allLogs.map(log => log[eventField])).size}</td></tr>
+                <tr><td>Unique Processes</td><td>${uniqueProcesses.size}</td></tr>
+                <tr><td>Unique Parent Processes</td><td>${uniqueParentProcesses.size}</td></tr>
+                <tr><td>Unique Command Lines</td><td>${uniqueCommandLines.size}</td></tr>
+                <tr><td>Unique Hashes</td><td>${uniqueHashes.size}</td></tr>
+                <tr><td>Unique Channels</td><td>${uniqueChannels.size}</td></tr>
+                <tr><td>Unique Logon Types</td><td>${uniqueLogonTypes.size}</td></tr>
+                <tr><td>Unique Providers</td><td>${uniqueProviders.size}</td></tr>
+                <tr><td>Unique Logon IDs</td><td>${uniqueLogonIds.size}</td></tr>
+                <tr><td>Unique SIDs</td><td>${uniqueSIDs.size}</td></tr>
+                <tr><td>Unique Domains</td><td>${uniqueDomains.size}</td></tr>
+                <tr><td>Unique Files</td><td>${uniqueFiles.size}</td></tr>
+                <tr><td>Unique Registry Keys</td><td>${uniqueRegistryKeys.size}</td></tr>
+                <tr><td>Unique Network Protocols</td><td>${uniqueNetworkProtocols.size}</td></tr>
+                <tr><td>Unique Granted Access Masks</td><td>${uniqueGrantedAccess.size}</td></tr>
+                <tr><td>Unique Call Traces</td><td>${uniqueCallTraces.size}</td></tr>
+                <tr><td>Sources</td><td>${uniqueSources} files</td></tr>
+                <tr><td>Time Range</td><td>${allLogs[0]?.[tsField] || 'N/A'} to ${allLogs[allLogs.length-1]?.[tsField] || 'N/A'}</td></tr>
+            `;
+            statsDiv.appendChild(statsTable);
+
+            // Details Table
+            const detailsTable = document.createElement('table');
+            detailsTable.id = 'details-table';
+            detailsTable.innerHTML = `
+                <tr><th>Category</th><th>Values</th></tr>
+                <tr><td>Unique Source IPs</td><td>${Array.from(uniqueSourceIPs).join(', ')}</td></tr>
+                <tr><td>Unique Destination IPs</td><td>${Array.from(uniqueDestIPs).join(', ')}</td></tr>
+                <tr><td>Unique Source Ports</td><td>${Array.from(uniqueSourcePorts).join(', ')}</td></tr>
+                <tr><td>Unique Destination Ports</td><td>${Array.from(uniqueDestPorts).join(', ')}</td></tr>
+                <tr><td>Unique Users</td><td>${Array.from(new Set(allLogs.map(log => log[userField]))).join(', ')}</td></tr>
+                <tr><td>Unique Events</td><td>${Array.from(new Set(allLogs.map(log => log[eventField]))).join(', ')}</td></tr>
+                <tr><td>Unique Processes</td><td>${Array.from(uniqueProcesses).join(', ')}</td></tr>
+                <tr><td>Unique Parent Processes</td><td>${Array.from(uniqueParentProcesses).join(', ')}</td></tr>
+                <tr><td>Unique Command Lines</td><td>${Array.from(uniqueCommandLines).join(', ')}</td></tr>
+                <tr><td>Unique Hashes</td><td>${Array.from(uniqueHashes).join(', ')}</td></tr>
+                <tr><td>Unique Channels</td><td>${Array.from(uniqueChannels).join(', ')}</td></tr>
+                <tr><td>Unique Logon Types</td><td>${Array.from(uniqueLogonTypes).join(', ')}</td></tr>
+                <tr><td>Unique Providers</td><td>${Array.from(uniqueProviders).join(', ')}</td></tr>
+                <tr><td>Unique Logon IDs</td><td>${Array.from(uniqueLogonIds).join(', ')}</td></tr>
+                <tr><td>Unique SIDs</td><td>${Array.from(uniqueSIDs).join(', ')}</td></tr>
+                <tr><td>Unique Domains</td><td>${Array.from(uniqueDomains).join(', ')}</td></tr>
+                <tr><td>Unique Files</td><td>${Array.from(uniqueFiles).join(', ')}</td></tr>
+                <tr><td>Unique Registry Keys</td><td>${Array.from(uniqueRegistryKeys).join(', ')}</td></tr>
+                <tr><td>Unique Network Protocols</td><td>${Array.from(uniqueNetworkProtocols).join(', ')}</td></tr>
+                <tr><td>Unique Granted Access Masks</td><td>${Array.from(uniqueGrantedAccess).join(', ')}</td></tr>
+                <tr><td>Unique Call Traces</td><td>${Array.from(uniqueCallTraces).join(', ')}</td></tr>
+            `;
+            statsDiv.appendChild(detailsTable);
+        }
+
+        function renderTable() {
+            const thead = document.querySelector('#logTable thead');
+            thead.innerHTML = '';
+            const keyCounts = {};
+            allLogs.forEach(log => Object.keys(log).forEach(k => keyCounts[k] = (keyCounts[k] || 0) + 1));
+            headers = Object.keys(keyCounts).sort((a, b) => keyCounts[b] - keyCounts[a]).slice(0, 15);
+            if (!headers.includes('source')) headers.push('source');
+
+            const tr = thead.insertRow();
+            headers.forEach(h => tr.insertCell().textContent = h);
+
+            const tbody = document.querySelector('#logTable tbody');
+            tbody.innerHTML = '';
+            allLogs.forEach((log, index) => {
+                const row = tbody.insertRow();
+                row.dataset.index = index;
+                headers.forEach(h => {
+                    const td = row.insertCell();
+                    td.textContent = log[h] || '-';
+                    td.title = td.textContent;
+                });
+            });
+
+            if (table) table.destroy();
+            table = new DataTable('#logTable', {
+                paging: true,
+                searching: true,
+                ordering: true,
+                scrollX: true,
+                pageLength: 25,
+                autoWidth: false,
+                columnDefs: [{ width: '200px', targets: '_all' }]
+            });
+        }
+
+        function renderCharts() {
+            const chartsDiv = document.getElementById('charts');
+            chartsDiv.innerHTML = '';
+
+            const chartConfigs = [
+                { field: 'ip', type: 'bar', label: 'IP Activity Distribution', color: 'rgba(52, 152, 219, 0.7)' },
+                { field: 'event', type: 'pie', label: 'Event Type Breakdown', colors: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#34495e', '#e67e22'] },
+                { field: 'user', type: 'bar', label: 'User Engagement Frequency', color: 'rgba(155, 89, 182, 0.7)' },
+                { field: 'DestinationPort', type: 'bar', label: 'Destination Port Usage', color: 'rgba(46, 204, 113, 0.7)' }
+            ];
+
+            chartConfigs.forEach(config => {
+                const f = getField(config.field) || config.field;
+                if (allLogs.some(log => log[f])) {
+                    const div = document.createElement('div');
+                    div.className = 'chart-container';
+                    const canvas = document.createElement('canvas');
+                    div.appendChild(canvas);
+                    chartsDiv.appendChild(div);
+
+                    const counts = allLogs.reduce((acc, log) => {
+                        const val = log[f];
+                        if (val) acc[val] = (acc[val] || 0) + 1;
+                        return acc;
+                    }, {});
+                    const labels = Object.keys(counts).slice(0, 20);
+                    const data = labels.map(l => counts[l]);
+
+                    new Chart(canvas, {
+                        type: config.type,
+                        data: {
+                            labels,
+                            datasets: [{ label: config.label, data, backgroundColor: config.type === 'pie' ? config.colors : config.color, borderColor: config.type === 'pie' ? config.colors : config.color.replace('0.7', '1'), borderWidth: 1 }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'top', labels: { boxWidth: 20 } } },
+                            scales: config.type !== 'pie' ? {
+                                y: { beginAtZero: true, title: { display: true, text: 'Count' } },
+                                x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                            } : {}
+                        }
+                    });
+                }
+            });
+
+            const tsField = getField('timestamp');
+            if (tsField) {
+                const div = document.createElement('div');
+                div.className = 'chart-container';
+                const canvas = document.createElement('canvas');
+                div.appendChild(canvas);
+                chartsDiv.appendChild(div);
+
+                const timeData = {};
+                allLogs.forEach(log => {
+                    const dt = luxon.DateTime.fromISO(log[tsField]).toFormat('yyyy-MM-dd HH:mm');
+                    timeData[dt] = (timeData[dt] || 0) + 1;
+                });
+
+                new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(timeData),
+                        datasets: [{ label: 'Event Timeline', data: Object.values(timeData), borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.3 }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            x: { type: 'time', time: { unit: 'minute', parser: 'yyyy-MM-dd HH:mm' }, title: { display: true, text: 'Time' } },
+                            y: { title: { display: true, text: 'Events' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function detectAnomalies() {
+            anomalies = [];
+            const anomalyList = document.getElementById('anomalyList');
+            anomalyList.innerHTML = '';
+
+            // Statistical: IP frequency outliers
+            const ipField = getField('ip');
+            if (ipField) {
+                const ipFreq = allLogs.reduce((acc, log) => { const ip = log[ipField]; if (ip) acc[ip] = (acc[ip] || 0) + 1; return acc; }, {});
+                const freqs = Object.values(ipFreq).filter(f => f > 0);
+                if (freqs.length > 1) {
+                    const mean = freqs.reduce((a, b) => a + b, 0) / freqs.length;
+                    const std = Math.sqrt(freqs.reduce((a, b) => a + (b - mean) ** 2, 0) / freqs.length) || 0;
+                    const threshold = mean + 2.5 * std; // Adjusted for sensitivity
+
+                    Object.entries(ipFreq).forEach(([ip, count]) => {
+                        if (count > threshold) {
+                            addAnomaly(`High IP Activity: ${ip} with ${count} events (z-score: ${((count - mean)/std).toFixed(2)}) - MITRE T1046 Network Service Scanning`, 'threat', row => row.cells[headers.indexOf(ipField)].textContent === ip);
+                        }
+                    });
+                }
+            }
+
+            // Statistical: Rare events
+            const eventField = getField('event');
+            if (eventField) {
+                const total = allLogs.length;
+                const eventFreq = allLogs.reduce((acc, log) => { const ev = log[eventField]; if (ev) acc[ev] = (acc[ev] || 0) + 1; return acc; }, {});
+                Object.entries(eventFreq).forEach(([event, count]) => {
+                    if (count / total < 0.01 && count > 0) {
+                        addAnomaly(`Rare Event: "${event}" (${count} times, ${(count / total * 100).toFixed(2)}%) - MITRE T1566 Phishing or Novel Attack`, 'anomaly', row => row.cells[headers.indexOf(eventField)].textContent === event);
+                    }
+                });
+            }
+
+            // Enhanced Ruleset: 50+ Sysmon/Windows-specific patterns
+            const suspiciousPatterns = [
+                { pattern: /audit log.*cleared|EventID.*1102/i, msg: 'Audit Log Clearing - MITRE T1070.001 Indicator Removal', class: 'threat' },
+                { pattern: /SharpView\.exe|Get-ObjectAcl/i, msg: 'AD Enumeration (SharpView) - MITRE T1087 Account Discovery', class: 'threat' },
+                { pattern: /new process.*created|EventID.*4688/i, msg: 'Suspicious Process Creation - MITRE T1059 Command and Scripting', class: 'threat' },
+                { pattern: /Dns query.*ldap|EventID.*22/i, msg: 'LDAP DNS Query - MITRE T1071 Application Layer Protocol', class: 'threat' },
+                { pattern: /logon failed|EventID.*4625/i, msg: 'Failed Logon - MITRE T1110 Brute Force', class: 'threat' },
+                { pattern: /Kerberos.*ticket|EventID.*4768|4769/i, msg: 'Kerberos Ticket Anomaly - MITRE T1558 Steal or Forge Tickets', class: 'threat' },
+                { pattern: /Registry value set|EventID.*13/i, msg: 'Registry Modification - MITRE T1112 Modify Registry', class: 'threat' },
+                { pattern: /File created.*ProgramData|EventID.*11/i, msg: 'Sensitive File Creation - MITRE T1564 Hide Artifacts', class: 'threat' },
+                { pattern: /Network connection.*389|EventID.*3/i, msg: 'LDAP Network Connection - MITRE T1043 Commonly Used Port', class: 'threat' },
+                { pattern: /handle to an object|EventID.*4656|4658|4690/i, msg: 'Object Handle Manipulation - MITRE T1036 Masquerading', class: 'anomaly' },
+                { pattern: /member was added|EventID.*4728/i, msg: 'Group Membership Change - MITRE T1098 Account Manipulation', class: 'threat' },
+                { pattern: /Image loaded.*dll|EventID.*7/i, msg: 'DLL Load - MITRE T1055 Process Injection', class: 'threat' },
+                { pattern: /forged Kerberos|golden ticket/i, msg: 'Forged Kerberos Ticket - MITRE T1558.001 Golden Ticket', class: 'threat' },
+                { pattern: /PowerShell.*execution|EventID.*4104/i, msg: 'PowerShell Execution - MITRE T1059.001 PowerShell', class: 'threat' },
+                { pattern: /LDAP.*query|Domain Admins/i, msg: 'LDAP Enumeration - MITRE T1069 Permission Groups Discovery', class: 'threat' },
+                { pattern: /logon.*type.*3|EventID.*4624/i, msg: 'Network Logon - MITRE T1021 Remote Services', class: 'threat' },
+                { pattern: /data exfiltration|unusual upload/i, msg: 'Data Exfiltration - MITRE T1041 Exfiltration Over C2', class: 'threat' },
+                { pattern: /privilege escalation|EventID.*4673/i, msg: 'Privilege Escalation - MITRE T1068 Privilege Escalation', class: 'threat' },
+                { pattern: /ransomware|file encryption/i, msg: 'Ransomware Activity - MITRE T1486 Data Encrypted', class: 'threat' },
+                { pattern: /C2 beaconing|repetitive traffic/i, msg: 'C2 Beaconing - MITRE T1071.001 Web Protocols', class: 'anomaly' },
+                { pattern: /insider threat|unusual access/i, msg: 'Insider Threat - MITRE T1530 Data from Cloud Storage', class: 'anomaly' },
+                { pattern: /zero-day|unknown signature/i, msg: 'Potential Zero-Day - MITRE T1204 User Execution', class: 'threat' },
+                { pattern: /phishing link|malicious URL/i, msg: 'Phishing Link - MITRE T1566.002 Spearphishing Link', class: 'threat' },
+                { pattern: /malware dropper|EventID.*1/i, msg: 'Malware Process Start - MITRE T1105 Ingress Tool Transfer', class: 'threat' },
+                { pattern: /reconnaissance|port scan/i, msg: 'Recon Activity - MITRE T1595 Active Scanning', class: 'threat' },
+                { pattern: /credential dumping|lsass access/i, msg: 'Credential Dumping - MITRE T1003 OS Credential Dumping', class: 'threat' },
+                { pattern: /web shell|anomalous web traffic/i, msg: 'Web Shell - MITRE T1505.003 Web Shell', class: 'threat' },
+                { pattern: /supply chain|third-party compromise/i, msg: 'Supply Chain Attack - MITRE T1195 Supply Chain Compromise', class: 'threat' },
+                { pattern: /APT behavior|persistent anomaly/i, msg: 'APT Persistence - MITRE T1098.001 Additional Cloud Credentials', class: 'threat' },
+                { pattern: /cloud anomaly|CloudTrail unusual/i, msg: 'Cloud Resource Abuse - MITRE T1078.004 Cloud Accounts', class: 'anomaly' },
+                { pattern: /process access|EventID.*10/i, msg: 'Process Access (Injection) - MITRE T1055 Process Injection', class: 'threat' },
+                { pattern: /create remote thread|EventID.*8/i, msg: 'Remote Thread Creation - MITRE T1055.001 DLL Injection', class: 'threat' },
+                { pattern: /new service|EventID.*7045/i, msg: 'New Service Installation - MITRE T1543.003 System Process', class: 'threat' },
+                { pattern: /file delete detected|EventID.*26/i, msg: 'File Deletion - MITRE T1070.004 File Deletion', class: 'anomaly' },
+                { pattern: /wmi event|EventID.*19/i, msg: 'WMI Activity - MITRE T1047 Windows Management Instrumentation', class: 'threat' },
+                { pattern: /pipe created|EventID.*17/i, msg: 'Named Pipe Creation - MITRE T1055 Process Injection', class: 'anomaly' },
+                { pattern: /pipe connected|EventID.*18/i, msg: 'Named Pipe Connection - MITRE T1055 Process Injection', class: 'anomaly' },
+                { pattern: /clipboard change|EventID.*24/i, msg: 'Clipboard Data Change - MITRE T1115 Clipboard Data', class: 'anomaly' },
+                { pattern: /file executable detected|EventID.*27/i, msg: 'Executable Creation Blocked - MITRE T1564.001 Hidden Files', class: 'threat' },
+                { pattern: /file shred detected|EventID.*28/i, msg: 'File Shredding Blocked - MITRE T1070.004 File Deletion', class: 'threat' },
+                { pattern: /process tampering|EventID.*25/i, msg: 'Process Tampering - MITRE T1564.002 Hidden Window', class: 'threat' },
+                { pattern: /driver loaded|EventID.*6/i, msg: 'Driver Load - MITRE T1547.006 Kernel Modules', class: 'anomaly' },
+                { pattern: /raw access read|EventID.*9/i, msg: 'Raw Disk Access - MITRE T1003 OS Credential Dumping', class: 'threat' },
+                { pattern: /file stream created|EventID.*15/i, msg: 'Alternate Data Stream - MITRE T1564.004 NTFS Attributes', class: 'anomaly' },
+                { pattern: /sysmon config change|EventID.*16/i, msg: 'Sysmon Config Change - Potential Evasion', class: 'threat' },
+                { pattern: /sysmon error|EventID.*255/i, msg: 'Sysmon Error - Potential Tampering', class: 'threat' },
+                { pattern: /service state change|EventID.*4/i, msg: 'Sysmon Service State Change - Monitoring Integrity', class: 'anomaly' },
+                { pattern: /file create time|EventID.*2/i, msg: 'File Creation Time Change - MITRE T1070.006 Timestomp', class: 'threat' },
+                { pattern: /process terminate|EventID.*5/i, msg: 'Process Termination - Potential Cleanup', class: 'anomaly' },
+                { pattern: /cmd\.exe.*cmdline/i, msg: 'Suspicious Command Line Execution - MITRE T1059 Command and Scripting', class: 'threat' },
+                { pattern: /net\.exe|net1\.exe/i, msg: 'Net Command Usage - MITRE T1078 Valid Accounts', class: 'threat' },
+                { pattern: /token elevation.*%%1937|%%1938/i, msg: 'Elevated Token Usage - MITRE T1134 Access Token Manipulation', class: 'threat' }
+            ];
+
+            allLogs.forEach((log, index) => {
+                const text = JSON.stringify(log).toLowerCase();
+                suspiciousPatterns.forEach(pat => {
+                    if (pat.pattern.test(text)) {
+                        const detailsField = getField('details');
+                        addAnomaly(`${pat.msg} | Details: ${log[detailsField]?.substring(0, 200) || 'N/A'}... | Timestamp: ${log[getField('timestamp')] || 'N/A'} | Source: ${log.source}`, 'threat', row => parseInt(row.dataset.index) === index);
+                    }
+                });
+            });
+
+            // User behavior clustering (tighter threshold)
+            const userField = getField('user');
+            if (userField && eventField) {
+                const userEvents = {};
+                allLogs.forEach(log => {
+                    const user = log[userField];
+                    const ev = log[eventField];
+                    if (user && ev) {
+                        userEvents[user] = userEvents[user] || {};
+                        userEvents[user][ev] = (userEvents[user][ev] || 0) + 1;
+                    }
+                });
+                const profiles = Object.values(userEvents);
+                if (profiles.length > 1) {
+                    profiles.forEach((profile, i) => {
+                        const distances = profiles.map((p, j) => i !== j ? Object.keys(profile).reduce((sum, key) => sum + Math.abs((profile[key] || 0) - (p[key] || 0)), 0) : 0).filter(d => d > 0);
+                        const avgDist = distances.reduce((a, b) => a + b, 0) / distances.length || 0;
+                        if (avgDist > 3) {
+                            const user = Object.keys(userEvents)[i];
+                            addAnomaly(`Unique User Behavior: ${user} deviates significantly (avg dist: ${avgDist.toFixed(2)}) - MITRE T1539 Session Hijacking`, 'anomaly', row => row.cells[headers.indexOf(userField)].textContent === user);
+                        }
+                    });
+                }
+            }
+        }
+
+        function addAnomaly(msg, cls, highlightCondition) {
+            anomalies.push({ message: msg, class: cls });
+            const li = document.createElement('li');
+            li.textContent = msg;
+            li.className = cls;
+            document.getElementById('anomalyList').appendChild(li);
+
+            const rows = document.querySelectorAll('#logTable tbody tr');
+            rows.forEach(row => {
+                if (highlightCondition(row)) row.classList.add(cls);
+            });
+        }
+
+        function exportAnomalies() {
+            const csv = ['Message,Class\n' + anomalies.map(a => `"${a.message.replace(/"/g, '""')}",${a.class}`).join('\n')];
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'anomalies.csv';
+            link.click();
+        }
+    </script>
+</body>
+</html>
